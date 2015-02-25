@@ -1,29 +1,38 @@
 {
-  "manifest_version": 2,
-  "name": "Cool Tooltip Dictionary 2014",
-  "description": "To get Korean meaning of word(English, Chiness, Japanese), just hover or select it with a mouse",
-  "version": "1.0.8",
-  "content_scripts": [{
-	   "matches": ["http://*/*","https://*/*"],
-	   "js":[	"jquery.min.js", 
-				"background.js", 
-				"t.js",
-				"lib/_languageData.js",
-				"lib/guessLanguage.js"
-			],
-		"css":["t.css"]
-		
-	}],
-  "icons": { "16": "icon.png",
-           "48": "icon.png",
-          "128": "icon.png" },
-  "background": {
-    "page": "background.html",
-	"persistent": false
-  },
-  "short_name": "Tooltip Kor<->Eng Dictionary",
-  "omnibox": { "keyword" : "Tooltip Dictionary" },
-  "permissions": [
-    "tabs"
-  ]
+    "manifest_version": 2,
+    "name": "Cool Tooltip Dictionary 2014",
+    "description": "To get Korean meaning of word(English, Chiness, Japanese), just hover or select it with a mouse",
+    "version": "1.0.9",
+    "content_scripts": [
+        {
+            "matches": [ "*://*/*" ],
+            "js": [
+                "jquery.min.js",
+                "background.js",
+                "option.js",
+                "lib/_languageData.js",
+                "lib/guessLanguage.js"
+            ],
+            "css": [ "t.css", "option.css" ]
+
+        }
+    ],
+    "icons": {
+        "16": "icon.png",
+        "48": "icon.png",
+        "128": "icon.png"
+    },
+    "background": {
+        "page": "background.html",
+        "persistent": false
+    },
+    "short_name": "Tooltip Kor<->Eng Dictionary",
+    "omnibox": { "keyword": "Tooltip Dictionary" },
+    "permissions": [
+        "tabs","storage"
+    ],
+    "browser_action": {
+        "default_icon": "icon.png",
+        "default_popup": "option.html"
+  }
 }

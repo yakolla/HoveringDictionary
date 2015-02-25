@@ -1,8 +1,8 @@
 #dicLayer{
     color: black;
-    position:absolute;
-    left: 10px;
-    top: 10px;    
+    position:fixed;
+    left: 10vw;
+    top: 10vh;    
     padding : 3px;    
     background : -webkit-linear-gradient(bottom, rgba(255, 220, 0, 1), rgba(255, 235, 0, 1));
     display : none;
@@ -35,8 +35,8 @@
 #ylog{
     color: black;
     position:fixed;
-    left: 10px;
-    top: 10px;    
+    left: 0vw;
+    top: 0vh;    
     padding : 3px;
     background : -webkit-linear-gradient(bottom, rgba(255, 240, 0, 1), rgba(255, 255, 0, 1));
     opacity : 1;
