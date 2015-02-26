@@ -13,7 +13,8 @@
                 "lib/_languageData.js",
                 "lib/guessLanguage.js"
             ],
-            "css": [ "t.css", "option.css" ]
+            "css": [ "t.css", "option.css" ],
+            "all_frames": true
 
         }
     ],

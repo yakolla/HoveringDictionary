@@ -9,12 +9,12 @@ function save_options() {
 
     options["backColor1"] = document.getElementById("backgroundColor1").color.toString();
     options["backColor2"] = document.getElementById("backgroundColor2").color.toString();
-    options["boxPosition"] = document.getElementById("boxPositionSelector").value;
+    
     options["delayedTime"] = document.getElementById("delayedTimeSelector").value;
-    options["noMatch"] = document.getElementById("noMatch").value;
+    
 
     chrome.storage.local.set(options, function () {
-        
+       
     });
 }
 function restore_defaults(orage) {
@@ -23,20 +23,20 @@ function restore_defaults(orage) {
     document.getElementById("fontSizeSelector").value = "12";
     document.getElementById("fontColor").color.fromString("000000");
 
-    document.getElementById("boxPositionSelector").value = "DOWN";
+    
     document.getElementById("delayedTimeSelector").value = "100";
     
     document.getElementById("backgroundColor1").color.fromString("FFDC00");
     document.getElementById("backgroundColor2").color.fromString("FFEB00");
-    document.getElementById("noMatch").value = 'True';
+    
 
 }
 
 function restore_options() {
 
-    var keys = ["fontSize", "fontType", "fontBold", "fontSize"
-                    , "fontColor", "borderSize", "borderColor", "backColor1"
-                    , "backColor2", "boxPosition", "offsetDistance", "delayedTime"];  // 불러올 항목들의 이름
+    var keys = ["fontSize", "fontType", "fontBold"
+                    , "fontColor", "backColor1"
+                    , "backColor2", "delayedTime"];  // 불러올 항목들의 이름
     chrome.storage.local.get(keys, function (options) {
         
         if (!options["fontSize"]) {            
@@ -52,10 +52,10 @@ function restore_options() {
         document.getElementById("backgroundColor1").color.fromString(options["backColor1"]);
         document.getElementById("backgroundColor2").color.fromString(options["backColor2"]);
 
-        document.getElementById("boxPositionSelector").value = options["boxPosition"];
+        
         
         document.getElementById("delayedTimeSelector").value = options["delayedTime"];
-        document.getElementById("noMatch").value = options["noMatch"];
+        
         
     });
 }

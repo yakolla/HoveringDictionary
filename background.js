@@ -4,7 +4,7 @@ var mouseX = 0, mouseY = 0, mouseTarget = null, mousePageX = 0, mousePageY = 0, 
 var oldWord = null;
 var loading = false;
 var focusIframe = null;
-var visiableOnNoMatch = true;
+
 
 function getWordAtPoint(elem, x, y) {
     if (elem == null)
@@ -120,16 +120,24 @@ function isInSelectedTextArea(x, y) {
 function onMouseMove(e) {
     mouseX = e.clientX,
     mouseY = e.clientY;
-    var toolbarHeight = window.outerHeight - window.innerHeight;
-    var toolbarWidth = window.outerWidth - window.innerWidth;
-    mousePageX = (e.screenX - window.screenX) / (window.outerWidth) * 100;
-    mousePageY = (e.screenY - window.screenY) / (window.outerHeight) * 100;
+    
     mousePressed = e.which;
-
     mouseTarget = e.target;
 
+    var height = mouseTarget.ownerDocument.documentElement.clientHeight;
+    var width = mouseTarget.ownerDocument.documentElement.clientWidth;
+    
+    var toolbarHeight = window.outerHeight - window.innerHeight;
+    var toolbarWidth = window.outerWidth - window.innerWidth;
+
+    //mousePageX = (e.screenX - window.screenX) / (window.outerWidth) * 100;
+    //mousePageY = (e.screenY - window.screenY) / (window.outerHeight) * 100;
+
+    mousePageX = (mouseX) / (width) * 100;
+    mousePageY = (mouseY) / (height) * 100;
+    
     if (debug == true) {
-        $('#ylog').html('<p>x:' + parseInt(mousePageX) + ', y:' + parseInt(mousePageY) + ', word:' + wordForDebug);
+        $('#ylog').html('<p>x:' + parseInt(mousePageX) + ', y:' + parseInt(mousePageY) + ', word:' + wordForDebug + ', target:' + width);
     }
 }
 
@@ -156,7 +164,7 @@ function parseKoreanEnglish(word) {
 
     }
     else {
-        meaning = "sorry, no match";
+        return null;
     }
 
     return word + ' ' +
@@ -188,7 +196,7 @@ function parseChiness(word) {
 
     }
     else {
-        meaning = "sorry, no match";
+        return null;
     }
 
     return word + ' ' +
@@ -220,7 +228,7 @@ function parseJapaness(word) {
 
     }
     else {
-        meaning = "sorry, no match";
+        return null;
     }
 
     return word + ' ' +
@@ -231,13 +239,15 @@ function parseJapaness(word) {
 chrome.runtime.onMessage.addListener(
 function (request, sender, sendResponse) {
 
-    $.get(request.foo, function (data) {
-        
-        sendResponse(data);  // 응답을 보냄    
+    if (request.url != null) {
+        $.get(request.url, function (data) {
 
-    }).fail(function () {
-        alert('woops'); // or whatever
-    });
+            sendResponse(data);  // 응답을 보냄    
+
+        }).fail(function () {
+            alert('woops'); // or whatever
+        });
+    }  
 
     return true;
 })
@@ -274,24 +284,23 @@ function loadXMLDoc(word) {
     }
 
     // https 호출할 때, 보안오류 발생하는걸 우회
-    chrome.runtime.sendMessage(null, { foo: url }, null, function (data) {
+    chrome.runtime.sendMessage(null, { url: url }, null, function (data) {
 
         // 응답 처리
         // store dic data to easy
         $("#dicRawData").html(data);
 
         var parsedData = parser(word);
-        $("#dicLayer").html(parsedData);
-        
-        if (parsedData == null && visiableOnNoMatch == false)
+
+        if (parsedData == null)
         {
             $('#dicLayer').hide();
         }
         else
         {
+            $("#dicLayer").html(parsedData);
             $('#dicLayer').show();
         }
-        
 
         loading = false;
 
@@ -344,8 +353,11 @@ function checkWord() {
 
         var dicLayer = $("#dicLayer");
 
-        dicLayer.css("left", mousePageX + 'vw');
-        dicLayer.css("top", (mousePageY) + 'vh');
+        //dicLayer.css("left", mousePageX + 'vw');
+        //dicLayer.css("top", (mousePageY+1) + 'vh');
+
+        dicLayer.css("left", mouseX + 'px');
+        dicLayer.css("top", (mouseY+15) + 'px');
 
         loadXMLDoc(word);
     }
@@ -358,9 +370,10 @@ function checkWord() {
 }
 
 function loadOptions() {
-    var keys = ["fontSize", "fontType", "fontBold", "fontSize"
-                    , "fontColor", "borderSize", "borderColor", "backColor1"
-                    , "backColor2", "boxPosition", "offsetDistance", "delayedTime"];  // 불러올 항목들의 이름
+    var keys = ["fontSize", "fontType", "fontBold"
+                     , "fontColor", "backColor1"
+                     , "backColor2", "delayedTime"];  // 불러올 항목들의 이름
+
 
     chrome.storage.local.get(keys, function (options) {
 
@@ -376,24 +389,10 @@ function loadOptions() {
         dicLayer.css('font-size', options["fontSize"] + 'px');
         dicLayer.css('font-family', options["fontType"]);
         dicLayer.css('background', '-webkit-linear-gradient(bottom, ' + '#' + options['backColor2'] + ', ' + '#' + options['backColor1'] + ')');
-        visiableOnNoMatch = options['noMatch'];
         $("#dicLayerArc").text("#dicLayer:after{border-color:" + '#' + options['backColor1'] + ' transparent' + ";}");
 
         setInterval(function () { checkWord() }, options['delayedTime']);
     });
-}
-
-function xhrGet(url, callback) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', url, true);
-    xhr.onreadystatechange = function () {
-        
-        if (this.readyState == 4) {
-            
-            callback(this.responseText);
-        }
-    };
-    xhr.send()
 }
 
 $(document).ready(function () {
