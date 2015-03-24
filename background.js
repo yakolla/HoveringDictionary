@@ -245,7 +245,7 @@ function (request, sender, sendResponse) {
             sendResponse(data);  // 응답을 보냄    
 
         }).fail(function () {
-            alert('woops'); // or whatever
+            
         });
     }  
 
@@ -357,7 +357,7 @@ function checkWord() {
         //dicLayer.css("top", (mousePageY+1) + 'vh');
 
         dicLayer.css("left", mouseX + 'px');
-        dicLayer.css("top", (mouseY+15) + 'px');
+        dicLayer.css("top", (mouseY+20) + 'px');
 
         loadXMLDoc(word);
     }
