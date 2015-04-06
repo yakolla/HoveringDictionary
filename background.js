@@ -143,6 +143,7 @@ function onMouseMove(e) {
 
 window.onmousemove = onMouseMove;
 
+
 var maxMeaning = 3;
 function parseKoreanEnglish(word) {
 
@@ -336,6 +337,7 @@ function checkWord() {
          
     var selWord = getSelectedWord().toString();
     var word = getWordAtPoint(target, x, y);
+    
 
     if (selWord.length) {
         word = null;

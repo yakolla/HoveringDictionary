@@ -2,10 +2,10 @@
     "manifest_version": 2,
     "name": "Cool Tooltip Dictionary 2014",
     "description": "To get Korean meaning of word(English, Chiness, Japanese), just hover or select it with a mouse",
-    "version": "1.0.11",
+    "version": "1.0.12",
     "content_scripts": [
         {
-            "matches": [ "*://*/*" ],
+            "matches": [ "<all_urls>" ],
             "js": [
                 "jquery.min.js",
                 "background.js",
