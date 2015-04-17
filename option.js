@@ -10,7 +10,8 @@ function save_options() {
     options["backColor1"] = document.getElementById("backgroundColor1").color.toString();
     options["backColor2"] = document.getElementById("backgroundColor2").color.toString();
     
-    options["delayedTime"] = document.getElementById("delayedTimeSelector").value;
+    options["tooltipUpDelayTime"] = document.getElementById("tooltipUpDelayedTimeSelector").value;
+    options["tooltipDownDelayTime"] = document.getElementById("tooltipDownDelayedTimeSelector").value;
     
 
     chrome.storage.local.set(options, function () {
@@ -24,7 +25,8 @@ function restore_defaults(orage) {
     document.getElementById("fontColor").color.fromString("000000");
 
     
-    document.getElementById("delayedTimeSelector").value = "100";
+    document.getElementById("tooltipUpDelayedTimeSelector").value = "100";
+    document.getElementById("tooltipDownDelayedTimeSelector").value = "300";
     
     document.getElementById("backgroundColor1").color.fromString("FFDC00");
     document.getElementById("backgroundColor2").color.fromString("FFEB00");
@@ -36,7 +38,7 @@ function restore_options() {
 
     var keys = ["fontSize", "fontType", "fontBold"
                     , "fontColor", "backColor1"
-                    , "backColor2", "delayedTime"];  // 불러올 항목들의 이름
+                    , "backColor2", "tooltipUpDelayTime", "tooltipDownDelayTime"];  // 불러올 항목들의 이름
     chrome.storage.local.get(keys, function (options) {
         
         if (!options["fontSize"]) {            
@@ -54,7 +56,8 @@ function restore_options() {
 
         
         
-        document.getElementById("delayedTimeSelector").value = options["delayedTime"];
+        document.getElementById("tooltipUpDelayedTimeSelector").value = options["tooltipUpDelayTime"];
+        document.getElementById("tooltipDownDelayedTimeSelector").value = options["tooltipDownDelayTime"];
         
         
     });

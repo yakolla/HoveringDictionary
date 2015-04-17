@@ -4,7 +4,8 @@ var mouseX = 0, mouseY = 0, mouseTarget = null, mousePageX = 0, mousePageY = 0, 
 var oldWord = null;
 var loading = false;
 var focusIframe = null;
-
+var startTootipTime = 0;
+var tooltipDownDelayTime = 100;
 
 function getWordAtPoint(elem, x, y) {
     if (elem == null)
@@ -58,7 +59,7 @@ function getSelectedWord() {
         }
     }
     
-    if (window.getSelection) {
+    if (window.getSelection) {        
         return window.getSelection();
     } else if (document.getSelection) {
         return document.getSelection();
@@ -137,7 +138,7 @@ function onMouseMove(e) {
     mousePageY = (mouseY) / (height) * 100;
     
     if (debug == true) {
-        $('#ylog').html('<p>x:' + parseInt(mousePageX) + ', y:' + parseInt(mousePageY) + ', word:' + wordForDebug + ', target:' + width);
+        $('#ylog').html('<p>x:' + parseInt(mousePageX) + ', y:' + parseInt(mousePageY) + ', word:' + wordForDebug + ', target:' + '');
     }
 }
 
@@ -295,7 +296,7 @@ function loadXMLDoc(word) {
 
         if (parsedData == null)
         {
-            $('#dicLayer').hide();
+           // $('#dicLayer').hide();
         }
         else
         {
@@ -330,21 +331,60 @@ function createLogDiv() {
     document.body.appendChild(myLayer);
 }
 
-function checkWord() {
-    var x = mouseX,
-        y = mouseY
-    target = mouseTarget;
-         
+function InDicLayer(target)
+{
+    if (target == null)
+        return false;
+
+    if (target.attributes && target.attributes.getNamedItem("id") && target.attributes.getNamedItem("id").value && target.attributes.getNamedItem("id").value == "dicLayer")
+        return true;
+
+    return InDicLayer(target.parentNode);
+}
+
+function getWordUnderMouse(x, y, target) {
+
+    if (InDicLayer(target))
+        return oldWord;
+
     var selWord = getSelectedWord().toString();
     var word = getWordAtPoint(target, x, y);
-    
 
     if (selWord.length) {
         word = null;
         if (isInSelectedTextArea(x, y))
             word = selWord;
-
     }
+
+    return word;
+}
+
+function hideWordToolTip() {
+
+    if (new Date().getTime() - startTootipTime < tooltipDownDelayTime)
+        return;
+
+    var word = getWordUnderMouse(mouseX, mouseY, mouseTarget);
+    if (word == null)
+    {
+        $('#dicLayer').hide();
+        
+        if (window.getSelection && InDicLayer(window.getSelection().anchorNode))
+        {
+            if (window.getSelection)
+                window.getSelection().removeAllRanges();
+        }
+
+        oldWord = null;
+    }
+}
+
+function showWordToolTip() {
+    var x = mouseX,
+        y = mouseY
+    target = mouseTarget;
+         
+    var word = getWordUnderMouse(x, y, target);
 
     wordForDebug = word;
 
@@ -362,9 +402,11 @@ function checkWord() {
         dicLayer.css("top", (mouseY+20) + 'px');
 
         loadXMLDoc(word);
+
+        startTootipTime = new Date().getTime();
     }
     else {
-        $('#dicLayer').hide();
+        //$('#dicLayer').hide();
     }
 
 
@@ -374,16 +416,20 @@ function checkWord() {
 function loadOptions() {
     var keys = ["fontSize", "fontType", "fontBold"
                      , "fontColor", "backColor1"
-                     , "backColor2", "delayedTime"];  // 불러올 항목들의 이름
+                     , "backColor2", "tooltipUpDelayTime", "tooltipDownDelayTime"];  // 불러올 항목들의 이름
 
 
     chrome.storage.local.get(keys, function (options) {
 
-        if (!options["fontSize"]) {
+        setInterval(function () { hideWordToolTip() }, 90);
 
-            setInterval(function () { checkWord() }, 90);
+        if (!options["fontSize"]) {
+            
+            setInterval(function () { showWordToolTip() }, 90);
             return;
         }
+
+        tooltipDownDelayTime = options['tooltipDownDelayTime'];
 
         var dicLayer = $("#dicLayer");
 
@@ -393,7 +439,7 @@ function loadOptions() {
         dicLayer.css('background', '-webkit-linear-gradient(bottom, ' + '#' + options['backColor2'] + ', ' + '#' + options['backColor1'] + ')');
         $("#dicLayerArc").text("#dicLayer:after{border-color:" + '#' + options['backColor1'] + ' transparent' + ";}");
 
-        setInterval(function () { checkWord() }, options['delayedTime']);
+        setInterval(function () { showWordToolTip() }, options['tooltipUpDelayTime']);
     });
 }
 
