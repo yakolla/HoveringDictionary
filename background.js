@@ -1,11 +1,20 @@
 ﻿var debug = false;
 var wordForDebug = null;
+var languageTypeForDebug = '';
+
 var mouseX = 0, mouseY = 0, mouseTarget = null, mousePageX = 0, mousePageY = 0, mousePressed = 0;
 var oldWord = null;
 var loading = false;
 var focusIframe = null;
+
 var startTootipTime = 0;
-var tooltipDownDelayTime = 100;
+
+var userOptions = {};
+userOptions["tooltipDownDelayTime "] = 100;
+userOptions["enableEngKor"] = "true";
+userOptions["enableKorEng"] = "true";
+userOptions["enableJapaneseKor"] = "true";
+userOptions["enableChineseKor"] = "true";
 
 function getWordAtPoint(elem, x, y) {
     if (elem == null)
@@ -138,7 +147,7 @@ function onMouseMove(e) {
     mousePageY = (mouseY) / (height) * 100;
     
     if (debug == true) {
-        $('#ylog').html('<p>x:' + parseInt(mousePageX) + ', y:' + parseInt(mousePageY) + ', word:' + wordForDebug + ', target:' + '');
+        $('#ylog').html('<p>x:' + parseInt(mousePageX) + ', y:' + parseInt(mousePageY) + ', word:' + wordForDebug + ', target:' + userOptions["enableKorEng"]);
     }
 }
 
@@ -174,7 +183,7 @@ function parseKoreanEnglish(word) {
              meaning;
 }
 
-function parseChiness(word) {
+function parseChineseKorean(word) {
 
 
     var jdata = JSON.parse($("#dicRawData").text());
@@ -206,7 +215,7 @@ function parseChiness(word) {
              meaning;
 }
 
-function parseJapaness(word) {
+function parseJapaneseKorean(word) {
 
 
     var jdata = JSON.parse($("#dicRawData").text());
@@ -258,55 +267,82 @@ function loadXMLDoc(word) {
 
     if (loading == true)
         return;
-    loading = true;
 
-    var url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURI(word, "UTF-8");
+    var url = "";
     var parser = parseKoreanEnglish;
+
     guessLanguage.detect(word, function (language) {
+        languageTypeForDebug = language;
         if (language == 'zh') {
+            if (userOptions["enableChineseKor"] == "false")
+                return;
+
             url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=1&nlp=false&wordString=" + encodeURI(word, "UTF-8");
-            parser = parseChiness;
+            parser = parseChineseKorean;
+            
         }
         else if (language == 'ja') {
+            if (userOptions["enableJapaneseKor"] == "false")
+                return;
+
             url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=2&nlp=false&wordString=" + encodeURI(word, "UTF-8");
-            parser = parseJapaness;
+            parser = parseJapaneseKorean;
+            
         }
+        else if (language == 'ko') {
+            if (userOptions["enableKorEng"] == "false")
+                return;
 
-    });
-
-    if (!chrome.runtime) {
-        // Chrome 20-21
-        chrome.runtime = chrome.extension;
-    } else if (!chrome.runtime.onMessage) {
-        // Chrome 22-25
-        chrome.runtime.onMessage = chrome.extension.onMessage;
-        chrome.runtime.sendMessage = chrome.extension.sendMessage;
-        chrome.runtime.onConnect = chrome.extension.onConnect;
-        chrome.runtime.connect = chrome.extension.connect;
-    }
-
-    // https 호출할 때, 보안오류 발생하는걸 우회
-    chrome.runtime.sendMessage(null, { url: url }, null, function (data) {
-
-        // 응답 처리
-        // store dic data to easy
-        $("#dicRawData").html(data);
-
-        var parsedData = parser(word);
-
-        if (parsedData == null)
-        {
-           // $('#dicLayer').hide();
-        }
+            url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURI(word, "UTF-8");
+            parser = parseKoreanEnglish;        
+        }        
         else
         {
-            $("#dicLayer").html(parsedData);
-            $('#dicLayer').show();
+            if (userOptions["enableEngKor"] == "false")
+                return;
+            
+            url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURI(word, "UTF-8");
+            parser = parseKoreanEnglish;
         }
 
-        loading = false;
+        loading = true;
+
+        if (!chrome.runtime) {
+            // Chrome 20-21
+            chrome.runtime = chrome.extension;
+        } else if (!chrome.runtime.onMessage) {
+            // Chrome 22-25
+            chrome.runtime.onMessage = chrome.extension.onMessage;
+            chrome.runtime.sendMessage = chrome.extension.sendMessage;
+            chrome.runtime.onConnect = chrome.extension.onConnect;
+            chrome.runtime.connect = chrome.extension.connect;
+        }
+
+        // https 호출할 때, 보안오류 발생하는걸 우회
+        chrome.runtime.sendMessage(null, { url: url }, null, function (data) {
+
+            // 응답 처리
+            // store dic data to easy
+            $("#dicRawData").html(data);
+
+            var parsedData = parser(word);
+
+            if (parsedData == null) {
+                // $('#dicLayer').hide();
+            }
+            else {
+                $("#dicLayer").html(parsedData);
+                $('#dicLayer').show();
+            }
+
+            loading = false;
+
+        });
 
     });
+
+
+   
 
 }
 function createDicionaryLayer() {
@@ -361,7 +397,7 @@ function getWordUnderMouse(x, y, target) {
 
 function hideWordToolTip() {
 
-    if (new Date().getTime() - startTootipTime < tooltipDownDelayTime)
+    if (new Date().getTime() - startTootipTime < userOptions["tooltipDownDelayTime"])
         return;
 
     var word = getWordUnderMouse(mouseX, mouseY, mouseTarget);
@@ -416,7 +452,8 @@ function showWordToolTip() {
 function loadOptions() {
     var keys = ["fontSize", "fontType", "fontBold"
                      , "fontColor", "backColor1"
-                     , "backColor2", "tooltipUpDelayTime", "tooltipDownDelayTime"];  // 불러올 항목들의 이름
+                     , "backColor2", "tooltipUpDelayTime", "tooltipDownDelayTime"
+                    , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"];  // 불러올 항목들의 이름
 
 
     chrome.storage.local.get(keys, function (options) {
@@ -428,8 +465,7 @@ function loadOptions() {
             setInterval(function () { showWordToolTip() }, 90);
             return;
         }
-
-        tooltipDownDelayTime = options['tooltipDownDelayTime'];
+        userOptions = options;
 
         var dicLayer = $("#dicLayer");
 
