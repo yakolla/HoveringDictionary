@@ -18,6 +18,8 @@ function save_options() {
     options["enableJapaneseKor"] = document.getElementById("enableJapaneseKor").value;
     options["enableChineseKor"] = document.getElementById("enableChineseKor").value;
 
+    options["enablePronunciation"] = document.getElementById("enablePronunciation").value;
+
     chrome.storage.local.set(options, function () {
        
     });
@@ -39,6 +41,8 @@ function restore_defaults(orage) {
     document.getElementById("enableKorEng").value = "true";
     document.getElementById("enableJapaneseKor").value = "true";
     document.getElementById("enableChineseKor").value = "true";
+
+    document.getElementById("enablePronunciation").value = "false";
     
 }
 
@@ -47,7 +51,8 @@ function restore_options() {
     var keys = ["fontSize", "fontType", "fontBold"
                     , "fontColor", "backColor1"
                     , "backColor2", "tooltipUpDelayTime", "tooltipDownDelayTime"
-                    , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"];  // 불러올 항목들의 이름
+                    , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"
+                    , "enablePronunciation"];  // 불러올 항목들의 이름
 
     chrome.storage.local.get(keys, function (options) {
         
@@ -71,6 +76,8 @@ function restore_options() {
         document.getElementById("enableKorEng").value = options["enableKorEng"];
         document.getElementById("enableJapaneseKor").value = options["enableJapaneseKor"];
         document.getElementById("enableChineseKor").value = options["enableChineseKor"];
+
+        document.getElementById("enablePronunciation").value = options["enablePronunciation"];
     });
 }
 

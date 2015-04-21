@@ -15,6 +15,7 @@ userOptions["enableEngKor"] = "true";
 userOptions["enableKorEng"] = "true";
 userOptions["enableJapaneseKor"] = "true";
 userOptions["enableChineseKor"] = "true";
+userOptions["enablePronunciation"] = "false";
 
 function getWordAtPoint(elem, x, y) {
     if (elem == null)
@@ -162,6 +163,10 @@ function parseKoreanEnglish(word) {
     // extract data
     var phoneticSymbol = $("#dicRawData .t2:first").text();
     var meaning = '';
+
+    $('#dicSoundData').attr('src', '');
+    var soundData = $("#dicRawData #pron_en").attr('playlist');
+    $('#dicSoundData').attr('src', soundData);
 
     $("#dicRawData .list_ex1 .first").each(function () {
         if (meaningCount >= maxMeaning)
@@ -333,6 +338,12 @@ function loadXMLDoc(word) {
             else {
                 $("#dicLayer").html(parsedData);
                 $('#dicLayer').show();
+
+                if (userOptions["enablePronunciation"] == "true")
+                {
+                    document.getElementById('dicSoundData').play();
+                }
+                
             }
 
             loading = false;
@@ -359,6 +370,15 @@ function createDicionaryRawData() {
     myLayer.style.display = 'none';
 
     document.body.appendChild(myLayer);
+}
+
+function createDicionarySoundData() {
+    var myLayer = document.createElement('audio');
+    myLayer.id = 'dicSoundData';
+    myLayer.style.display = 'none';
+    
+    document.body.appendChild(myLayer);
+    
 }
 
 function createLogDiv() {
@@ -453,7 +473,8 @@ function loadOptions() {
     var keys = ["fontSize", "fontType", "fontBold"
                      , "fontColor", "backColor1"
                      , "backColor2", "tooltipUpDelayTime", "tooltipDownDelayTime"
-                    , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"];  // 불러올 항목들의 이름
+                    , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"
+                    , "enablePronunciation"];  // 불러올 항목들의 이름
 
 
     chrome.storage.local.get(keys, function (options) {
@@ -483,6 +504,7 @@ $(document).ready(function () {
 
     createDicionaryLayer();
     createDicionaryRawData();
+    createDicionarySoundData();
     if (debug == true)
         createLogDiv();
 
