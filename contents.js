@@ -10,7 +10,7 @@ var focusIframe = null;
 var startTootipTime = 0;
 
 var userOptions = {};
-userOptions["tooltipDownDelayTime "] = 100;
+userOptions["tooltipDownDelayTime"] = 100;
 userOptions["enableEngKor"] = "true";
 userOptions["enableKorEng"] = "true";
 userOptions["enableJapaneseKor"] = "true";
