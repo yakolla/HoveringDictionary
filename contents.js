@@ -10,7 +10,7 @@ var focusIframe = null;
 var startTootipTime = 0;
 
 var userOptions = {};
-userOptions["tooltipDownDelayTime"] = 100;
+userOptions["tooltipDownDelayTime"] = 1000;
 userOptions["enableEngKor"] = "true";
 userOptions["enableKorEng"] = "true";
 userOptions["enableJapaneseKor"] = "true";
@@ -164,10 +164,8 @@ function parseKoreanEnglish(word) {
     var phoneticSymbol = $("#dicRawData .t2:first").text();
     var meaning = '';
 
-    $('#dicSoundData').attr('src', '');
-    var soundData = $("#dicRawData #pron_en").attr('playlist');
-    $('#dicSoundData').attr('src', soundData);
-
+    var soundURL = $("#dicRawData #pron_en").attr('playlist');
+    
     $("#dicRawData .list_ex1 .first").each(function () {
         if (meaningCount >= maxMeaning)
             return;
@@ -183,8 +181,17 @@ function parseKoreanEnglish(word) {
         return null;
     }
 
-    return word + ' ' +
-             phoneticSymbol + '</br>' +
+    var soundLoop = userOptions["enablePronunciation"] == "true" ? "autoplay" : "";
+    var soundTag = '<audio id="proa"' + soundLoop + '> <source src="' + soundURL + '">' + '</audio>' +
+                        '<img onclick="document.getElementById(\'proa\').play()" src="' + chrome.extension.getURL('play.gif') + '" />';
+
+    if (soundURL == null)
+        soundTag = "";
+
+    return word + ' ' + 
+             phoneticSymbol +
+            soundTag +
+            '</br>' +
              meaning;
 }
 
@@ -214,10 +221,20 @@ function parseChineseKorean(word) {
     else {
         return null;
     }
+    
+    var soundURL = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=80&wrapper=0&enc=0&text=" + word;
+    var soundLoop = userOptions["enablePronunciation"] == "true" ? "autoplay" : "";
+    var soundTag = '<audio id="proa"' + soundLoop + '> <source src="' + soundURL + '">' + '</audio>' +
+                        '<img onclick="document.getElementById(\'proa\').play()" src="' + chrome.extension.getURL('play.gif') + '" />';
+
+    if (soundURL == null)
+        soundTag = "";
 
     return word + ' ' +
-             phoneticSymbol + '</br>' +
-             meaning;
+            phoneticSymbol +
+           soundTag +
+           '</br>' +
+            meaning;
 }
 
 function parseJapaneseKorean(word) {
@@ -247,9 +264,19 @@ function parseJapaneseKorean(word) {
         return null;
     }
 
+    var soundURL = "http://tts.naver.com/tts/mp3ttsV1.cgi?spk_id=302&text_fmt=0&pitch=100&volume=100&speed=80&wrapper=0&enc=0&text=" + word;
+    var soundLoop = userOptions["enablePronunciation"] == "true" ? "autoplay" : "";
+    var soundTag = '<audio id="proa"' + soundLoop + '> <source src="' + soundURL + '">' + '</audio>' +
+                        '<img onclick="document.getElementById(\'proa\').play()" src="' + chrome.extension.getURL('play.gif') + '" />';
+
+    if (soundURL == null)
+        soundTag = "";
+
     return word + ' ' +
-             phoneticSymbol + '</br>' +
-             meaning;
+            phoneticSymbol +
+           soundTag +
+           '</br>' +
+            meaning;
 }
 
 var port = chrome.runtime.connect({ name: "mycontentscript" });
@@ -313,14 +340,8 @@ function loadXMLDoc(word) {
                 // $('#dicLayer').hide();
             }
             else {
-                $("#dicLayer").html(parsedData);
+                $("#dicLayer").html(parsedData);                
                 $('#dicLayer').show();
-
-                if (userOptions["enablePronunciation"] == "true")
-                {
-                    document.getElementById('dicSoundData').play();
-                }
-                
             }
 
             loading = false;
@@ -347,15 +368,6 @@ function createDicionaryRawData() {
     myLayer.style.display = 'none';
 
     document.body.appendChild(myLayer);
-}
-
-function createDicionarySoundData() {
-    var myLayer = document.createElement('audio');
-    myLayer.id = 'dicSoundData';
-    myLayer.style.display = 'none';
-    
-    document.body.appendChild(myLayer);
-    
 }
 
 function createLogDiv() {
@@ -465,10 +477,8 @@ function loadOptions() {
 
     chrome.storage.local.get(keys, function (options) {
 
-        setInterval(function () { hideWordToolTip() }, 90);
-
         if (!options["fontSize"]) {
-            
+            setInterval(function () { hideWordToolTip() }, 90);
             setInterval(function () { showWordToolTip() }, 90);
             return;
         }
@@ -483,6 +493,7 @@ function loadOptions() {
         $("#dicLayerArc").text("#dicLayer:after{border-color:" + '#' + options['backColor1'] + ' transparent' + ";}");
 
         setInterval(function () { showWordToolTip() }, options['tooltipUpDelayTime']);
+        setInterval(function () { hideWordToolTip() }, options['tooltipDownDelayTime']);
     });
 }
 
@@ -490,10 +501,10 @@ $(document).ready(function () {
 
     createDicionaryLayer();
     createDicionaryRawData();
-    createDicionarySoundData();
+    
     if (debug == true)
         createLogDiv();
-
+   
     /*
     $('iframe').contents().mousemove(onMouseMove);
     $("iframe").hover(function () {

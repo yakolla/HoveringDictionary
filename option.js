@@ -32,7 +32,7 @@ function restore_defaults(orage) {
 
     
     document.getElementById("tooltipUpDelayedTimeSelector").value = "100";
-    document.getElementById("tooltipDownDelayedTimeSelector").value = "300";
+    document.getElementById("tooltipDownDelayedTimeSelector").value = "1000";
     
     document.getElementById("backgroundColor1").color.fromString("FFDC00");
     document.getElementById("backgroundColor2").color.fromString("FFEB00");
