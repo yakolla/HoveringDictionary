@@ -22,7 +22,7 @@ chrome.runtime.onConnect.addListener(function (port) {
 chrome.runtime.onMessage.addListener(
 function (request, sender, sendResponse) {
     if (request.url != null) {
-        
+        /*
         $.get(request.url, function (data) {
 
             sendResponse(data);  // 응답을 보냄    
@@ -30,7 +30,16 @@ function (request, sender, sendResponse) {
         }).fail(function () {
 
         });
+        */
+
+        var xmlHttp = new XMLHttpRequest();
+        xmlHttp.open("GET", request.url, false);
+        xmlHttp.send();
+        sendResponse( xmlHttp.responseText);
+        
     }
+
+   
     return true;
 })
 
