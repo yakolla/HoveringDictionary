@@ -184,7 +184,7 @@ function onMouseMove(e) {
     var height = mouseTarget.ownerDocument.documentElement.clientHeight;
     var width = mouseTarget.ownerDocument.documentElement.clientWidth;
 
-    if (mousePressed > 0) {
+    if (mousePressed > 0 || e.button > 0) {
         if (InDicLayer(mouseTarget) == false) {
             mouseTarget = null;
             $('#dicLayer').hide();
