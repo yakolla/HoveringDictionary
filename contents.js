@@ -64,6 +64,49 @@ function getWordAtPoint(elem, x, y) {
     return (null);
 }
 
+function getCharacterAtPoint(elem, x, y) {
+    if (elem == null)
+        return null;
+
+    if (elem.nodeType == elem.TEXT_NODE) {
+
+        var range = elem.ownerDocument.createRange();
+
+        range.selectNodeContents(elem);
+        var currentPos = 0;
+        var endPos = range.endOffset;
+        while (currentPos < endPos)
+        {
+            range.setStart(elem, currentPos);
+            range.setEnd(elem, currentPos + 1);
+            
+            var rect = range.getBoundingClientRect();
+
+            if (rect.left <= x && rect.right >= x &&
+               rect.top <= y && rect.bottom >= y) {
+                var ret = range.toString();
+                debugString = ret;
+                return (ret);
+            }
+            currentPos += 1;
+        }
+    } else {
+        for (var i = 0; i < elem.childNodes.length; i++) {
+            var range = elem.childNodes[i].ownerDocument.createRange();
+            range.selectNodeContents(elem.childNodes[i]);
+            var rect = range.getBoundingClientRect();
+            if (rect.left <= x && rect.right >= x &&
+               rect.top <= y && rect.bottom >= y) {
+                //range.detach();
+                return (getCharacterAtPoint(elem.childNodes[i], x, y));
+            } else {
+                //range.detach();
+            }
+        }
+    }
+    return (null);
+}
+
 function getSelectedWord() {
     if (focusIframe) {
         var word = getSelectedTextFromIFrame(focusIframe);
@@ -140,7 +183,14 @@ function onMouseMove(e) {
 
     var height = mouseTarget.ownerDocument.documentElement.clientHeight;
     var width = mouseTarget.ownerDocument.documentElement.clientWidth;
-    
+
+    if (mousePressed > 0) {
+        if (InDicLayer(mouseTarget) == false) {
+            mouseTarget = null;
+            $('#dicLayer').hide();
+        }
+    }    
+
     var toolbarHeight = window.outerHeight - window.innerHeight;
     var toolbarWidth = window.outerWidth - window.innerWidth;
 
@@ -183,15 +233,17 @@ function parseKoreanEnglish(word) {
 }
 
 function parseChineseKorean(word) {
-
-
+    
     var jdata = JSON.parse($("#dicRawData").text());   
     
     // extract data
-    var phoneticSymbol = '[' + jdata.pinyin + ']';
-    if (jdata.pinyin == null)
-        phoneticSymbol = '';
+    var phoneticSymbol = '';
+    if (jdata.pinyin)
+        phoneticSymbol = '[' + jdata.pinyin + ']';
 
+    if (jdata.readPronun)
+        phoneticSymbol = phoneticSymbol + '[' + jdata.readPronun + ']';
+    
     var meanings = [];
 
     for (var meaningCount in jdata.mean) {
@@ -204,7 +256,7 @@ function parseChineseKorean(word) {
     if (meanings.length == 0)
         return null;
 
-    var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=80&wrapper=0&enc=0&text=" + word;    
+    var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + word;    
 
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
@@ -214,9 +266,9 @@ function parseJapaneseKorean(word) {
     var jdata = JSON.parse($("#dicRawData").text());
     
     // extract data
-    var phoneticSymbol = '[' + jdata.pinyin + ']';
-    if (jdata.pinyin == null)
-        phoneticSymbol = '';
+    var phoneticSymbol = '';
+    if (jdata.pinyin)
+        phoneticSymbol = '[' + jdata.pinyin + ']';
 
     var meanings = [];
 
@@ -230,7 +282,7 @@ function parseJapaneseKorean(word) {
     if (meanings.length == 0)
         return null;
 
-    var soundUrl = "http://tts.naver.com/tts/mp3ttsV1.cgi?spk_id=302&text_fmt=0&pitch=100&volume=100&speed=80&wrapper=0&enc=0&text=" + word;
+    var soundUrl = "http://tts.naver.com/tts/mp3ttsV1.cgi?spk_id=302&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + word;
     
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
@@ -240,6 +292,49 @@ port.onMessage.addListener(function (message, sender) {
     contextSelectionWord = message.greeting;
     showWordToolTipCore(rMouseX, rMouseY, message.greeting, 1000);
 });
+
+function setHtmlToDicRawData(word, language, parser, data)
+{
+    if (language == 'zh')
+    {
+        if (data.indexOf("<html") >= 0) {
+            var entryTop = $(data).find(".entrytop_box");
+
+            var jsonData = {};
+            if (entryTop) {
+
+                jsonData.pinyin = entryTop.find(".sound").text();
+                jsonData.readPronun = entryTop.find(".t_w").text();
+                if (jsonData.readPronun.length == 0) {
+                    jsonData.readPronun = entryTop.find("dd strong").text();
+                }
+                
+                jsonData.readPronun = jsonData.readPronun + entryTop.find(".t_letter").text();                   
+                
+                jsonData.mean = [];
+
+                var entry_txt = $(data).find(".entry_txt p");
+
+                if (entry_txt) {
+                    if (entry_txt.text().length)
+                        jsonData.mean.push(entry_txt.text());
+                }
+                
+                $(data).find(".kinds_list li").each(function () {
+                    jsonData.mean.push($(this).text());
+                });
+
+                
+                data = JSON.stringify(jsonData);
+                //console.debug(data);
+            }
+        }
+    }
+
+    $("#dicRawData").html(data);
+
+    return parser(word);
+}
 
 function loadXMLDoc(word) {
 
@@ -255,9 +350,18 @@ function loadXMLDoc(word) {
             if (userOptions["enableChineseKor"] == "false")
                 return;
 
-            url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=1&nlp=false&wordString=" + encodeURI(word, "UTF-8");
-            
-            parser = parseChineseKorean;
+            var regExp = /[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gi;
+            word = word.replace(regExp, "");
+            if (word.length > 1) {
+                url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=1&nlp=false&wordString=" + encodeURI(word, "UTF-8");
+                parser = parseChineseKorean;
+            }
+            else if (word.length == 1)
+            {
+               //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=3&nlp=false&wordString=" + encodeURI(word, "UTF-8");
+                url = "http://hanja.naver.com/hanja?q=" + encodeURI(word, "UTF-8");
+                parser = parseChineseKorean;
+            }
             
         }
         else if (language == 'ja') {
@@ -288,23 +392,28 @@ function loadXMLDoc(word) {
         
         chrome.runtime.sendMessage({ url: url}, function (data) {
 
-            // 응답 처리
-            // store dic data to easy
-            $("#dicRawData").html(data);
-
-            var parsedData = parser(word);
+            var parsedData = setHtmlToDicRawData(word, language, parser, data);
             
             if (parsedData == null) {
                 if (language == 'zh') {
-                    url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=3&nlp=false&wordString=" + encodeURI(word, "UTF-8");
-                    chrome.runtime.sendMessage({ url: url }, function (data) {
-                        $("#dicRawData").html(data);
+                    
+                    if (word.length > 1)
+                    {
+                        url = "http://hanja.naver.com/word?q=" + encodeURI(word, "UTF-8");                        
+                    }
+                    else if (word.length == 1)
+                    {
+                        word = getCharacterAtPoint(mouseTarget, mouseX, mouseY);
+                        url = "http://hanja.naver.com/hanja?q=" + encodeURI(word, "UTF-8");
+                    }
 
-                        var parsedData = parser(word);
+                    chrome.runtime.sendMessage({ url: url }, function (data) {                        
+
+                        var parsedData = setHtmlToDicRawData(word, language, parser, data);
                         if (parsedData != null) {
-                            presenteParsedDic(parsedData);
+                            presentParsedDic(parsedData);
                         }
-
+                        
                         loading = false;
                     });
                 }
@@ -314,7 +423,7 @@ function loadXMLDoc(word) {
                 }
             }
             else {
-                presenteParsedDic(parsedData);
+                presentParsedDic(parsedData);
                 loading = false;
             }
         });
@@ -322,7 +431,7 @@ function loadXMLDoc(word) {
     });
 }
 
-function presenteParsedDic(parsedData) {
+function presentParsedDic(parsedData) {
     var means = "";
     for (var i in parsedData.meanings) {
         means += '*' + '<strong>' + parsedData.meanings[i] + '</strong></br>';
@@ -336,8 +445,8 @@ function presenteParsedDic(parsedData) {
         soundTag = "";
 
     var htmlData = parsedData.word +
-                        parsedData.phoneticSymbol +
                         soundTag +
+                        parsedData.phoneticSymbol +
                          '</br>' +
                         means;
 
@@ -385,6 +494,9 @@ function InDicLayer(target)
 
 function getWordUnderMouse(x, y, target) {
 
+    if (target == null)
+        return null;
+
     if (InDicLayer(target))
         return oldWord;
 
@@ -397,8 +509,8 @@ function getWordUnderMouse(x, y, target) {
     {
         return contextSelectionWord;
     }
-
-    return getWordAtPoint(target, x, y);;
+    
+    return getWordAtPoint(target, x, y);
 }
 
 function hideWordToolTip() {
@@ -488,7 +600,7 @@ function loadOptions() {
         dicLayer.css('font-family', options["fontType"]);
         dicLayer.css('background', '-webkit-linear-gradient(bottom, ' + '#' + options['backColor2'] + ', ' + '#' + options['backColor1'] + ')');
         $("#dicLayerArc").text("#dicLayer:after{border-color:" + '#' + options['backColor1'] + ' transparent' + ";}");
-        debugString = options['tooltipDownDelayTime'];
+        
         setInterval(function () { showWordToolTip() }, options['tooltipUpDelayTime']);
         setInterval(function () { hideWordToolTip() }, options['tooltipDownDelayTime']);
     });
