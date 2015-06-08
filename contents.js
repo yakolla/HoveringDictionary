@@ -2,6 +2,7 @@
 var wordForDebug = null;
 var debugString = null;
 var forceHideToolTip = false;
+var forceShowToolTip = false;
 
 var mouseX = 0, mouseY = 0, mouseTarget = null, mousePageX = 0, mousePageY = 0, mousePressed = 0, rMouseX = 0, rMouseY = 0;
 var oldWord = null;
@@ -330,10 +331,79 @@ function setHtmlToDicRawData(word, language, parser, data)
             }
         }
     }
+    else if (language == 'ja') {
+        if (data.indexOf("<html") >= 0) {
+            var entryTop = $(data).find(".mean_total.line_fst");
 
+            var jsonData = {};
+            if (entryTop) {
+
+                jsonData.pinyin = entryTop.find(".phonetic").text();
+                
+                jsonData.mean = [];
+
+                var entry_txt = $(data).find(".wrap_meaning");
+
+                entry_txt.find("daum\\:word").each(function () {
+                    jsonData.mean.push($(this).text());
+                });
+
+                data = JSON.stringify(jsonData);
+                //console.debug(data);
+            }
+        }
+    }
     $("#dicRawData").html(data);
 
     return parser(word);
+}
+
+function retryToTranslateChineseKorean(word, parser) {
+    var url = null;
+    var language = 'zh';
+
+    url = "http://hanja.naver.com/word?q=" + encodeURI(word, "UTF-8");
+    
+    chrome.runtime.sendMessage({ url: url }, function (data) {
+
+        var parsedData = setHtmlToDicRawData(word, language, parser, data);
+        if (parsedData != null) {
+            presentParsedDic(parsedData);
+            loading = false;
+        }
+        else {
+            word = getCharacterAtPoint(mouseTarget, mouseX, mouseY);
+            url = "http://hanja.naver.com/hanja?q=" + encodeURI(word, "UTF-8");
+
+            chrome.runtime.sendMessage({ url: url }, function (data) {
+                var parsedData = setHtmlToDicRawData(word, language, parser, data);
+                if (parsedData != null) {
+                    presentParsedDic(parsedData);
+                }
+                loading = false;
+            });
+        }
+
+    });
+}
+
+function retryToTranslateJapanseKorean(word, parser) {
+    var url = null;
+    var language = 'ja';
+
+    word = getCharacterAtPoint(mouseTarget, mouseX, mouseY);
+    url = "http://dic.daum.net/search.do?dic=jp&q=" + encodeURI(word, "UTF-8");
+
+
+    chrome.runtime.sendMessage({ url: url }, function (data) {
+
+        var parsedData = setHtmlToDicRawData(word, language, parser, data);
+        if (parsedData != null) {
+            presentParsedDic(parsedData); 
+        }
+        
+        loading = false;
+    });
 }
 
 function loadXMLDoc(word) {
@@ -358,7 +428,6 @@ function loadXMLDoc(word) {
             }
             else if (word.length == 1)
             {
-               //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=3&nlp=false&wordString=" + encodeURI(word, "UTF-8");
                 url = "http://hanja.naver.com/hanja?q=" + encodeURI(word, "UTF-8");
                 parser = parseChineseKorean;
             }
@@ -368,7 +437,11 @@ function loadXMLDoc(word) {
             if (userOptions["enableJapaneseKor"] == "false")
                 return;
 
-            url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=2&nlp=false&wordString=" + encodeURI(word, "UTF-8");
+            var regExp = /[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gi;
+            word = word.replace(regExp, "");
+
+            //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=2&nlp=false&wordString=" + encodeURI(word, "UTF-8");
+            url = "http://dic.daum.net/search.do?dic=jp&q=" + encodeURI(word, "UTF-8");
             parser = parseJapaneseKorean;
             
         }
@@ -395,30 +468,13 @@ function loadXMLDoc(word) {
             var parsedData = setHtmlToDicRawData(word, language, parser, data);
             
             if (parsedData == null) {
-                if (language == 'zh') {
-                    
-                    if (word.length > 1)
-                    {
-                        url = "http://hanja.naver.com/word?q=" + encodeURI(word, "UTF-8");                        
-                    }
-                    else if (word.length == 1)
-                    {
-                        word = getCharacterAtPoint(mouseTarget, mouseX, mouseY);
-                        url = "http://hanja.naver.com/hanja?q=" + encodeURI(word, "UTF-8");
-                    }
-
-                    chrome.runtime.sendMessage({ url: url }, function (data) {                        
-
-                        var parsedData = setHtmlToDicRawData(word, language, parser, data);
-                        if (parsedData != null) {
-                            presentParsedDic(parsedData);
-                        }
-                        
-                        loading = false;
-                    });
+                if (language == 'zh') {                    
+                    retryToTranslateChineseKorean(word, parser);
                 }
-                else
-                {
+                else if (language == 'ja') {
+                    retryToTranslateJapanseKorean(word, parser);
+                }                
+                else {
                     loading = false;
                 }
             }
@@ -493,6 +549,9 @@ function InDicLayer(target)
 }
 
 function getWordUnderMouse(x, y, target) {
+
+    if (forceShowToolTip == true)
+        return oldWord;
 
     if (target == null)
         return null;
@@ -630,12 +689,18 @@ $(document).ready(function () {
             forceHideToolTip = true;
             $('#dicLayer').hide();
         }
+        else if (e.which == 17) {
+            forceShowToolTip = true;
+        }
     });
 
     $(document).keyup(function (e) {
         if (e.which == 18) {            
             forceHideToolTip = false;
             $('#dicLayer').show();
+        }
+        else if (e.which == 17) {
+            forceShowToolTip = false;
         }
     });
     
