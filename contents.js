@@ -3,6 +3,7 @@ var wordForDebug = null;
 var debugString = null;
 var forceHideToolTip = false;
 var forceShowToolTip = false;
+var foundWord = false;
 
 var mouseX = 0, mouseY = 0, mouseTarget = null, mousePageX = 0, mousePageY = 0, mousePressed = 0, rMouseX = 0, rMouseY = 0;
 var oldWord = null;
@@ -370,6 +371,7 @@ function retryToTranslateChineseKorean(word, parser) {
         if (parsedData != null) {
             presentParsedDic(parsedData);
             loading = false;
+            foundWord = true;
         }
         else {
             word = getCharacterAtPoint(mouseTarget, mouseX, mouseY);
@@ -378,8 +380,10 @@ function retryToTranslateChineseKorean(word, parser) {
             chrome.runtime.sendMessage({ url: url }, function (data) {
                 var parsedData = setHtmlToDicRawData(word, language, parser, data);
                 if (parsedData != null) {
-                    presentParsedDic(parsedData);
+                    presentParsedDic(parsedData);                    
                 }
+
+                foundWord = parsedData != null;
                 loading = false;
             });
         }
@@ -401,7 +405,8 @@ function retryToTranslateJapanseKorean(word, parser) {
         if (parsedData != null) {
             presentParsedDic(parsedData); 
         }
-        
+
+        foundWord = parsedData != null;
         loading = false;
     });
 }
@@ -476,10 +481,12 @@ function loadXMLDoc(word) {
                 }                
                 else {
                     loading = false;
+                    foundWord = false;
                 }
             }
             else {
                 presentParsedDic(parsedData);
+                foundWord = true;
                 loading = false;
             }
         });
@@ -487,7 +494,8 @@ function loadXMLDoc(word) {
     });
 }
 
-function presentParsedDic(parsedData) {
+function presentParsedDic(parsedData) {    
+
     var means = "";
     for (var i in parsedData.meanings) {
         means += '*' + '<strong>' + parsedData.meanings[i] + '</strong></br>';
@@ -582,7 +590,7 @@ function hideWordToolTip() {
 
     var word = getWordUnderMouse(mouseX, mouseY, mouseTarget);
     
-    if (word == null)
+    if (word == null || (loading == false && foundWord == false))
     {
         $('#dicLayer').hide();
         
