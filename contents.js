@@ -6,6 +6,7 @@ var forceShowToolTip = false;
 var foundWord = false;
 
 var mouseX = 0, mouseY = 0, mouseTarget = null, mousePageX = 0, mousePageY = 0, mousePressed = 0, rMouseX = 0, rMouseY = 0;
+var pageHeight = 0, pageWidth = 0;
 var oldWord = null;
 var loading = false;
 var focusIframe = null;
@@ -183,8 +184,8 @@ function onMouseMove(e) {
     mousePressed = e.which;
     mouseTarget = e.target;
 
-    var height = mouseTarget.ownerDocument.documentElement.clientHeight;
-    var width = mouseTarget.ownerDocument.documentElement.clientWidth;
+    pageHeight = mouseTarget.ownerDocument.documentElement.clientHeight;
+    pageWidth= mouseTarget.ownerDocument.documentElement.clientWidth;
 
     if (mousePressed > 0 || e.button > 0) {
         if (InDicLayer(mouseTarget) == false) {
@@ -199,8 +200,8 @@ function onMouseMove(e) {
     //mousePageX = (e.screenX - window.screenX) / (window.outerWidth) * 100;
     //mousePageY = (e.screenY - window.screenY) / (window.outerHeight) * 100;
 
-    mousePageX = (mouseX) / (width) * 100;
-    mousePageY = (mouseY) / (height) * 100;
+    mousePageX = (mouseX) / (pageWidth) * 100;
+    mousePageY = (mouseY) / (pageHeight) * 100;
     
     if (debug == true) {
         $('#ylog').html('<p>x:' + parseInt(mousePageX) + ', y:' + parseInt(mousePageY) + ', word:' + wordForDebug + ', debugString:' + debugString);
@@ -258,7 +259,7 @@ function parseChineseKorean(word) {
     if (meanings.length == 0)
         return null;
 
-    var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + word;    
+    var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURI(word, "UTF-8");
 
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
@@ -284,7 +285,7 @@ function parseJapaneseKorean(word) {
     if (meanings.length == 0)
         return null;
 
-    var soundUrl = "http://tts.naver.com/tts/mp3ttsV1.cgi?spk_id=302&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + word;
+    var soundUrl = "http://tts.naver.com/tts/mp3ttsV1.cgi?spk_id=302&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURI(word, "UTF-8");
     
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
@@ -422,8 +423,11 @@ function loadXMLDoc(word) {
     guessLanguage.detect(word, function (language) {
         
         if (language == 'zh') {
-            if (userOptions["enableChineseKor"] == "false")
+            if (userOptions["enableChineseKor"] == "false") {
+                $('#dicLayer').hide();
+                foundWord = false;
                 return;
+            }
 
             var regExp = /[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gi;
             word = word.replace(regExp, "");
@@ -439,8 +443,11 @@ function loadXMLDoc(word) {
             
         }
         else if (language == 'ja') {
-            if (userOptions["enableJapaneseKor"] == "false")
+            if (userOptions["enableJapaneseKor"] == "false") {
+                $('#dicLayer').hide();
+                foundWord = false;
                 return;
+            }
 
             var regExp = /[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gi;
             word = word.replace(regExp, "");
@@ -451,16 +458,22 @@ function loadXMLDoc(word) {
             
         }
         else if (language == 'ko') {
-            if (userOptions["enableKorEng"] == "false")
+            if (userOptions["enableKorEng"] == "false") {
+                $('#dicLayer').hide();
+                foundWord = false;
                 return;
+            }
 
             url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURI(word, "UTF-8");
             parser = parseKoreanEnglish;        
         }        
         else
         {
-            if (userOptions["enableEngKor"] == "false")
+            if (userOptions["enableEngKor"] == "false") {
+                $('#dicLayer').hide();
+                foundWord = false;
                 return;
+            }
             
             url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURI(word, "UTF-8");
             parser = parseKoreanEnglish;
@@ -515,10 +528,28 @@ function presentParsedDic(parsedData) {
                         means;
 
 
-    $("#dicLayer").html(htmlData);
+    var dicLayer = $("#dicLayer");
+    dicLayer.html(htmlData);
+
+
+    var x = mouseX;
+    var y = mouseY;
+    var gabHeight = 20;
+
+    if (pageWidth < dicLayer.width() + x) {
+        x = pageWidth - dicLayer.width();
+    }
+    
+    if (pageHeight < dicLayer.height() + y + gabHeight) {
+        y = pageHeight - dicLayer.height() - gabHeight;
+    }
+
+    dicLayer.css("left", x + 'px');
+    dicLayer.css("top", (y + gabHeight) + 'px');
+
     
     if (forceHideToolTip == false) {
-        $('#dicLayer').show();
+        dicLayer.show();
     }
 }
 
@@ -607,21 +638,21 @@ function hideWordToolTip() {
 function showWordToolTipCore(x, y, word, timeDelay)
 {
     wordForDebug = word;
-
+    
     if (word) {
         word = word.trim();
         if (oldWord == word)
             return;
 
+        /*
         var dicLayer = $("#dicLayer");
-
-        //dicLayer.css("left", mousePageX + 'vw');
-        //dicLayer.css("top", (mousePageY+1) + 'vh');
-
+        
         dicLayer.css("left", x + 'px');
         dicLayer.css("top", (y + 20) + 'px');
-
+        */
         loadXMLDoc(word);
+
+        
 
         startTootipTime = new Date().getTime() + timeDelay;
     }

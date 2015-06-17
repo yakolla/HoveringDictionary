@@ -3,6 +3,7 @@
     position:fixed;
     left: 10vw;
     top: 10vh;    
+    max-width: 300px;
     padding : 3px;    
     background : -webkit-linear-gradient(bottom, rgba(255, 220, 0, 1), rgba(255, 235, 0, 1));
     display : none;
