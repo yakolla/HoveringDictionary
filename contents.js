@@ -1,7 +1,6 @@
 ﻿var debug = false;
 var wordForDebug = null;
 var debugString = null;
-var forceHideToolTip = false;
 var forceShowToolTip = false;
 var foundWord = false;
 
@@ -22,11 +21,12 @@ userOptions["enableKorEng"] = "true";
 userOptions["enableJapaneseKor"] = "true";
 userOptions["enableChineseKor"] = "true";
 userOptions["enablePronunciation"] = "false";
+userOptions["enableTranslate"] = "true";
 
 function getWordAtPoint(elem, x, y) {
     if (elem == null)
         return null;
-
+    
     if (elem.nodeType == elem.TEXT_NODE) {
 
         var range = elem.ownerDocument.createRange();
@@ -292,8 +292,22 @@ function parseJapaneseKorean(word) {
 
 var port = chrome.runtime.connect({ name: "mycontentscript" });
 port.onMessage.addListener(function (message, sender) {
-    contextSelectionWord = message.greeting;
-    showWordToolTipCore(rMouseX, rMouseY, message.greeting, 1000);
+
+    if (message.id == 1)
+    {
+        contextSelectionWord = message.greeting;
+        showWordToolTipCore(rMouseX, rMouseY, message.greeting, 1000);
+    }
+    else if (message.id == 2)
+    {
+        var e = jQuery.Event("keyup");
+        e.which = 192; // # Some key code value
+        e.keyCode = 192;
+        $(document).trigger(e);
+
+        
+    }
+
 });
 
 function setHtmlToDicRawData(word, language, parser, data)
@@ -475,6 +489,10 @@ function loadXMLDoc(word) {
                 return;
             }
             
+            var regExp = /[0-9\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gim;
+            
+            word = word.replace(regExp, "");
+            
             url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURI(word, "UTF-8");
             parser = parseKoreanEnglish;
         }
@@ -482,7 +500,6 @@ function loadXMLDoc(word) {
         loading = true;
         
         chrome.runtime.sendMessage({ url: url}, function (data) {
-
             var parsedData = setHtmlToDicRawData(word, language, parser, data);
             
             if (parsedData == null) {
@@ -548,7 +565,7 @@ function presentParsedDic(parsedData) {
     dicLayer.css("top", (y + gabHeight) + 'px');
 
     
-    if (forceHideToolTip == false) {
+    if (userOptions["enableTranslate"] == "true") {
         dicLayer.show();
     }
 }
@@ -560,6 +577,7 @@ function createDicionaryLayer() {
     var myLayer = document.createElement('div');
     myLayer.id = 'dicLayer';
     document.body.appendChild(myLayer);
+
 }
 
 function createDicionaryRawData() {
@@ -668,7 +686,10 @@ function showWordToolTip() {
     var x = mouseX,
         y = mouseY
     target = mouseTarget;
-         
+    
+    if (userOptions["enableTranslate"] == "false")
+        return;
+   
     var word = getWordUnderMouse(x, y, target);
 
     showWordToolTipCore(x, y, word, 0);
@@ -679,7 +700,8 @@ function loadOptions() {
                      , "fontColor", "backColor1"
                      , "backColor2", "tooltipUpDelayTime", "tooltipDownDelayTime"
                     , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"
-                    , "enablePronunciation"];  // 불러올 항목들의 이름
+                    , "enablePronunciation"
+                   , "enableTranslate"];  // 불러올 항목들의 이름
 
 
     chrome.storage.local.get(keys, function (options) {
@@ -689,7 +711,11 @@ function loadOptions() {
             setInterval(function () { showWordToolTip() }, 90);
             return;
         }*/
-        userOptions = options;
+
+        if (options["fontSize"])
+        {
+            userOptions = options;
+        }
 
         var dicLayer = $("#dicLayer");
 
@@ -698,6 +724,7 @@ function loadOptions() {
         dicLayer.css('font-family', options["fontType"]);
         dicLayer.css('background', '-webkit-linear-gradient(bottom, ' + '#' + options['backColor2'] + ', ' + '#' + options['backColor1'] + ')');
         $("#dicLayerArc").text("#dicLayer:after{border-color:" + '#' + options['backColor1'] + ' transparent' + ";}");
+        
         
         setInterval(function () { showWordToolTip() }, options['tooltipUpDelayTime']);
         setInterval(function () { hideWordToolTip() }, options['tooltipDownDelayTime']);
@@ -721,26 +748,26 @@ $(document).ready(function () {
 
     });
     */
-    loadOptions();
-    
-    $(document).keydown(function (e) {
-        if (e.which == 18) {            
-            forceHideToolTip = true;
-            $('#dicLayer').hide();
-        }
-        else if (e.which == 17) {
-            forceShowToolTip = true;
-        }
-    });
+    loadOptions();   
 
     $(document).keyup(function (e) {
-        if (e.which == 18) {            
-            forceHideToolTip = false;
-            $('#dicLayer').show();
-        }
-        else if (e.which == 17) {
-            forceShowToolTip = false;
-        }
+        //~
+        if (e.which == 192) {            
+            
+            if (userOptions["enableTranslate"] == "false") {
+                $('#dicLayer').show();
+                userOptions["enableTranslate"] = "true";
+            }
+            else {
+
+                $('#dicLayer').hide();
+                userOptions["enableTranslate"] = "false";
+            }   
+            
+            chrome.storage.local.set({ "enableTranslate": userOptions["enableTranslate"] }, function () {
+
+            });
+        }        
     });
     
     $(document).mousedown(function (e) {

@@ -1,15 +1,21 @@
-﻿
+﻿var onOff = true;
+var title = "Cool-ToolTip Translate";
+
 // Set up context menu at install time.
 chrome.runtime.onInstalled.addListener(
     function () {
-
-        var context = "selection";
-        var title = "Cool-ToolTip Translate '%s'";
-
-        var id = chrome.contextMenus.create({
-            "title": title, "contexts": [context],
-            "id": "context" + context
-        });        
+        /*
+        chrome.contextMenus.create({
+            title: title + " " + (onOff == true ? "On" : "Off"),
+            contexts: ["all"],
+            id: "1"
+        });
+        */
+       chrome.contextMenus.create({
+            title: title + " '%s'",
+            contexts: ["selection"],
+            id: "2"
+        });  
     }    
 );
 
@@ -36,9 +42,10 @@ function (request, sender, sendResponse) {
         xmlHttp.open("GET", request.url, false);
         xmlHttp.send();
         sendResponse( xmlHttp.responseText);
-        
+        return true;
     }
 
+    sendResponse("");
    
     return true;
 })
@@ -46,7 +53,32 @@ function (request, sender, sendResponse) {
 // add click event
 chrome.contextMenus.onClicked.addListener(
     function (info, tab) {
-        var sText = info.selectionText;
-        contents_port.postMessage({ greeting: sText });
+       
+        if (info.menuItemId == "1") {
+            
+            translateOnOff(info, tab);
+        }
+        else if (info.menuItemId == "2") {
+            translateSelectedText(info, tab);
+        }
+        
     }
 );
+
+function translateOnOff(info, tab) {
+    
+    onOff = !onOff;
+       
+    chrome.contextMenus.update(info.menuItemId, {
+        title: title + " " + (onOff == true ? "On" : "Off")
+    });
+    
+    contents_port.postMessage({ id: 2, on: onOff });
+    
+}
+
+function translateSelectedText(info, tab) {
+    var sText = info.selectionText;
+    contents_port.postMessage({ id:1, greeting: sText });
+
+}
