@@ -47,3 +47,7 @@
     line-height:120%;
     pointer-events:none;
 }
+
+dicStrong{
+    font-weight: bold;
+}

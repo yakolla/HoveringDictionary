@@ -528,7 +528,7 @@ function presentParsedDic(parsedData) {
 
     var means = "";
     for (var i in parsedData.meanings) {
-        means += '*' + '<strong>' + parsedData.meanings[i] + '</strong></br>';
+        means += '*' + '<dicStrong>' + parsedData.meanings[i] + '</dicStrong></br>';
     }
 
     var soundLoop = userOptions["enablePronunciation"] == "true" ? "autoplay" : "";
