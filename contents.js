@@ -88,7 +88,7 @@ function getCharacterAtPoint(elem, x, y) {
             if (rect.left <= x && rect.right >= x &&
                rect.top <= y && rect.bottom >= y) {
                 var ret = range.toString();
-                debugString = ret;
+                //debugString = ret;
                 return (ret);
             }
             currentPos += 1;
@@ -348,26 +348,32 @@ function setHtmlToDicRawData(word, language, parser, data)
         }
     }
     else if (language == 'ja') {
-        if (data.indexOf("<html") >= 0) {
-            var entryTop = $(data).find(".mean_total.line_fst");
-
+       if (data.indexOf("<html") >= 0) {
+           var entryTop = $(data).find(".sub_word");
+           
             var jsonData = {};
             if (entryTop) {
 
                 jsonData.pinyin = entryTop.find(".phonetic").text();
-                
+                debugString = jsonData.pinyin;
                 jsonData.mean = [];
 
-                var entry_txt = $(data).find(".wrap_meaning");
-
-                entry_txt.find("daum\\:word").each(function () {
-                    jsonData.mean.push($(this).text());
+                var entry_txt = $(data).find(".list_mean li");
+                
+                //entry_txt.find("daum\\:word").each(function () {
+                entry_txt.each(function () {
+                    var mean = "";
+                    $(this).find("daum\\:word").each(function () {
+                        mean += $(this).text();
+                    });
+                    jsonData.mean.push(mean);
                 });
 
                 data = JSON.stringify(jsonData);
                 //console.debug(data);
             }
         }
+       
     }
     $("#dicRawData").html(data);
 
@@ -411,8 +417,8 @@ function retryToTranslateJapanseKorean(word, parser) {
     var language = 'ja';
 
     word = getCharacterAtPoint(mouseTarget, mouseX, mouseY);
-    url = "http://dic.daum.net/search.do?dic=jp&q=" + encodeURI(word, "UTF-8");
-
+    url = "http://dic.daum.net/search.do?dic=jp&search_first=Y&q=" + encodeURI(word, "UTF-8");
+    //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=2&nlp=false&wordString=" + encodeURI(word, "UTF-8");
 
     chrome.runtime.sendMessage({ url: url }, function (data) {
 
@@ -465,9 +471,9 @@ function loadXMLDoc(word) {
 
             var regExp = /[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gi;
             word = word.replace(regExp, "");
-
+            
             //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=2&nlp=false&wordString=" + encodeURI(word, "UTF-8");
-            url = "http://dic.daum.net/search.do?dic=jp&q=" + encodeURI(word, "UTF-8");
+            url = "http://dic.daum.net/search.do?dic=jp&search_first=Y&q=" + encodeURI(word, "UTF-8");
             parser = parseJapaneseKorean;
             
         }
