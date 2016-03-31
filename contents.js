@@ -795,7 +795,7 @@ $(document).ready(function () {
         if (e.which == 3) {
                 rMouseX = mouseX;
                 rMouseY = mouseY;            
-            return false;
+            return true;
         }
 
         if (e.which == 1) {

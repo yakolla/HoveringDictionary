@@ -4,13 +4,7 @@ var title = "Cool-ToolTip Translate";
 // Set up context menu at install time.
 chrome.runtime.onInstalled.addListener(
     function () {
-        /*
-        chrome.contextMenus.create({
-            title: title + " " + (onOff == true ? "On" : "Off"),
-            contexts: ["all"],
-            id: "1"
-        });
-        */
+       
        chrome.contextMenus.create({
             title: title + " '%s'",
             contexts: ["selection"],
@@ -18,29 +12,27 @@ chrome.runtime.onInstalled.addListener(
         });  
     }    
 );
-/*
-var contents_port;
-chrome.runtime.onConnect.addListener(function (port) {
-    contents_port = port;
-    console.debug(port);
-})
-*/
+
+//var contents_port;
+//chrome.runtime.onConnect.addListener(function (port) {
+//    contents_port = port;
+//    console.debug(port);
+//})
+
 chrome.runtime.onMessage.addListener(
 function (request, sender, sendResponse) {
     if (request.url != null) {
-        $.get(request.url, function (data) {
-
-            sendResponse(data);  // 응답을 보냄    
-
-        }).fail(function () {
-
-        });
         
-        /*
+      //  $.get(request.url, function (data) {
+      //     sendResponse(data);  // 응답을 보냄    
+      //  }).fail(function () {
+      //  });
+        
+       
         var xmlHttp = new XMLHttpRequest();
         xmlHttp.open("GET", request.url, false);
         xmlHttp.send();
-        sendResponse( xmlHttp.responseText);*/
+        sendResponse( xmlHttp.responseText);
         return true;
     }
 
