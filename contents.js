@@ -289,13 +289,14 @@ function parseJapaneseKorean(word) {
     
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
-
+/*
 var port = chrome.runtime.connect({ name: "mycontentscript" });
 port.onMessage.addListener(function (message, sender) {
 
     if (message.id == 1)
     {
         contextSelectionWord = message.greeting;
+
         showWordToolTipCore(rMouseX, rMouseY, message.greeting, 1000);
     }
     else if (message.id == 2)
@@ -304,11 +305,25 @@ port.onMessage.addListener(function (message, sender) {
         e.which = 192; // # Some key code value
         e.keyCode = 192;
         $(document).trigger(e);
-
-        
     }
-
 });
+*/
+chrome.runtime.onMessage.addListener(onMessageProc);
+
+function onMessageProc(request, sender, sendResponse) {
+    if (request.id == 1) {
+        contextSelectionWord = request.greeting;
+
+        showWordToolTipCore(rMouseX, rMouseY, request.greeting, 1000);
+    }
+    else if (request.id == 2) {
+        var e = jQuery.Event("keyup");
+        e.which = 192; // # Some key code value
+        e.keyCode = 192;
+        $(document).trigger(e);
+    }
+}
+
 
 function setHtmlToDicRawData(word, language, parser, data)
 {
