@@ -289,6 +289,16 @@ function parseJapaneseKorean(word) {
     
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
+
+function parseGoogleTranslate(word) {
+    var jdata = JSON.parse($("#dicRawData").text());
+    
+    var meanings = [];
+    if (jdata.sentences)
+        meanings[0] = jdata.sentences[0].trans;
+    
+    return { word: "", phoneticSymbol: "", soundUrl: null, meanings: meanings };
+}
 /*
 var port = chrome.runtime.connect({ name: "mycontentscript" });
 port.onMessage.addListener(function (message, sender) {
@@ -388,8 +398,8 @@ function setHtmlToDicRawData(word, language, parser, data)
                 //console.debug(data);
             }
         }
-       
     }
+
     $("#dicRawData").html(data);
 
     return parser(word);
@@ -446,6 +456,28 @@ function retryToTranslateJapanseKorean(word, parser) {
         loading = false;
     });
 }
+
+
+function retryToTranslateEnglishKorean(word, parser) {
+    var url = null;
+    var language = 'en';
+
+    url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&hl=ko&dt=t&dt=bd&dj=1&source=icon&tk=123533.123534&q=" + encodeURI(word, "UTF-8");
+    parser = parseGoogleTranslate;
+
+    chrome.runtime.sendMessage({ url: url }, function (data) {
+
+        var parsedData = setHtmlToDicRawData(word, language, parser, data);
+        if (parsedData != null) {
+            presentParsedDic(parsedData);
+        }
+
+        foundWord = parsedData != null;
+        loading = false;
+    });
+}
+
+
 
 function loadXMLDoc(word) {
 
@@ -515,7 +547,7 @@ function loadXMLDoc(word) {
             word = word.replace(regExp, "");
             
             url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURI(word, "UTF-8");
-            parser = parseKoreanEnglish;
+            parser = parseKoreanEnglish;            
         }
 
         loading = true;
@@ -529,10 +561,11 @@ function loadXMLDoc(word) {
                 }
                 else if (language == 'ja') {
                     retryToTranslateJapanseKorean(word, parser);
-                }                
+                }
                 else {
-                    loading = false;
-                    foundWord = false;
+                    //loading = false;
+                    //foundWord = false;
+                    retryToTranslateEnglishKorean(word, parser);
                 }
             }
             else {
@@ -554,7 +587,7 @@ function presentParsedDic(parsedData) {
 
     var soundLoop = userOptions["enablePronunciation"] == "true" ? "autoplay" : "";
     var soundTag = '<audio id="proa"' + soundLoop + '> <source src="' + parsedData.soundUrl + '">' + '</audio>' +
-                    '<img onclick="document.getElementById(\'proa\').play()" src="' + chrome.extension.getURL('play.gif') + '" />';
+                        '<div id="dicImg" onclick="document.getElementById(\'proa\').play()" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" />';
 
     if (parsedData.soundUrl == null)
         soundTag = "";
@@ -563,12 +596,12 @@ function presentParsedDic(parsedData) {
                         soundTag +
                         parsedData.phoneticSymbol +
                          '</br>' +
+                         '</br>' +
                         means;
 
 
     var dicLayer = $("#dicLayer");
     dicLayer.html(htmlData);
-
 
     var x = mouseX;
     var y = mouseY;

@@ -51,3 +51,9 @@
 dicStrong{
     font-weight: bold;
 }
+
+#dicImg {
+    width:19px;
+    height:18px;
+    float:left;
+}
