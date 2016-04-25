@@ -296,8 +296,13 @@ function parseGoogleTranslate(word) {
     var meanings = [];
     if (jdata.sentences)
         meanings[0] = jdata.sentences[0].trans;
+
+    if (meanings.length == 0)
+        return null;
+
+    var soudnUrl = "http://translate.google.co.kr/translate_tts?ie=UTF-8&tl=ko&client=gtx&ttsspeed=1&q=" + encodeURI(meanings[0], "UTF-8");
     
-    return { word: "", phoneticSymbol: "", soundUrl: null, meanings: meanings };
+    return { word: "", phoneticSymbol: "", soundUrl: soudnUrl, meanings: meanings };
 }
 /*
 var port = chrome.runtime.connect({ name: "mycontentscript" });
