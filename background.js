@@ -1,6 +1,9 @@
 ﻿var onOff = true;
 var title = "Cool-ToolTip Translate";
-
+// Fix up prefixing
+window.AudioContext = window.AudioContext || window.webkitAudioContext;
+var audioContext = new AudioContext();
+var audioSource = null;
 // Set up context menu at install time.
 chrome.runtime.onInstalled.addListener(
     function () {
@@ -33,6 +36,38 @@ function (request, sender, sendResponse) {
         xmlHttp.open("GET", request.url, false);
         xmlHttp.send();
         sendResponse( xmlHttp.responseText);
+        return true;
+    }
+
+    if (request.soundUrl != null) {
+
+        function play(audioBuffer) {
+            if (audioSource != null) {
+                audioSource.stop();
+                audioSource = null;
+            }
+            
+            audioSource = audioContext.createBufferSource();
+            audioSource.buffer = audioBuffer;
+            audioSource.connect(audioContext.destination);
+            audioSource.start(0);
+        }
+
+        function loadSound(url) {
+            var request = new XMLHttpRequest();
+            request.open('GET', url, true);
+            request.responseType = 'arraybuffer';
+
+            // Decode asynchronously
+            request.onload = function () {
+                if (request.status == 200) {
+                    audioContext.decodeAudioData(request.response, play);
+                }
+            }
+            request.send();
+        }
+
+        loadSound(request.soundUrl);
         return true;
     }
 

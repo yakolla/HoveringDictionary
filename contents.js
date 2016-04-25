@@ -236,7 +236,9 @@ function parseKoreanEnglish(word) {
 }
 
 function parseChineseKorean(word) {
-    
+    if ($("#dicRawData").text().indexOf("[") == -1)
+        return null;
+
     var jdata = JSON.parse($("#dicRawData").text());   
     
     // extract data
@@ -259,12 +261,14 @@ function parseChineseKorean(word) {
     if (meanings.length == 0)
         return null;
 
-    var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURI(word, "UTF-8");
+    var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURIComponent(word);
 
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
 
 function parseJapaneseKorean(word) {
+    if ($("#dicRawData").text().indexOf("[") == -1)
+        return null;
     
     var jdata = JSON.parse($("#dicRawData").text());
     
@@ -285,12 +289,15 @@ function parseJapaneseKorean(word) {
     if (meanings.length == 0)
         return null;
 
-    var soundUrl = "http://tts.naver.com/tts/mp3ttsV1.cgi?spk_id=302&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURI(word, "UTF-8");
+    var soundUrl = "http://tts.naver.com/tts/mp3ttsV1.cgi?spk_id=302&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURIComponent(word);
     
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
 
 function parseGoogleTranslate(word) {
+    if ($("#dicRawData").text().indexOf("[") == -1)
+        return null;
+
     var jdata = JSON.parse($("#dicRawData").text());
     
     var meanings = [];
@@ -300,9 +307,11 @@ function parseGoogleTranslate(word) {
     if (meanings.length == 0)
         return null;
 
-    var soudnUrl = "http://translate.google.co.kr/translate_tts?ie=UTF-8&tl=ko&client=gtx&ttsspeed=1&q=" + encodeURI(meanings[0], "UTF-8");
+    var sentence = encodeURIComponent(meanings[0]);
+    //var soundUrl = "https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=gtx&q=" + sentence;
+    var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=ko&q=" + sentence;
     
-    return { word: "", phoneticSymbol: "", soundUrl: soudnUrl, meanings: meanings };
+    return { word: "", phoneticSymbol: "", soundUrl: soundUrl, meanings: meanings };
 }
 /*
 var port = chrome.runtime.connect({ name: "mycontentscript" });
@@ -414,7 +423,7 @@ function retryToTranslateChineseKorean(word, parser) {
     var url = null;
     var language = 'zh';
 
-    url = "http://hanja.naver.com/word?q=" + encodeURI(word, "UTF-8");
+    url = "http://hanja.naver.com/word?q=" + encodeURIComponent(word);
     
     chrome.runtime.sendMessage({ url: url }, function (data) {
 
@@ -426,7 +435,7 @@ function retryToTranslateChineseKorean(word, parser) {
         }
         else {
             word = getCharacterAtPoint(mouseTarget, mouseX, mouseY);
-            url = "http://hanja.naver.com/hanja?q=" + encodeURI(word, "UTF-8");
+            url = "http://hanja.naver.com/hanja?q=" + encodeURIComponent(word);
 
             chrome.runtime.sendMessage({ url: url }, function (data) {
                 var parsedData = setHtmlToDicRawData(word, language, parser, data);
@@ -447,7 +456,7 @@ function retryToTranslateJapanseKorean(word, parser) {
     var language = 'ja';
 
     word = getCharacterAtPoint(mouseTarget, mouseX, mouseY);
-    url = "http://dic.daum.net/search.do?dic=jp&search_first=Y&q=" + encodeURI(word, "UTF-8");
+    url = "http://dic.daum.net/search.do?dic=jp&search_first=Y&q=" + encodeURIComponent(word);
     //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=2&nlp=false&wordString=" + encodeURI(word, "UTF-8");
 
     chrome.runtime.sendMessage({ url: url }, function (data) {
@@ -466,8 +475,7 @@ function retryToTranslateJapanseKorean(word, parser) {
 function retryToTranslateEnglishKorean(word, parser) {
     var url = null;
     var language = 'en';
-
-    url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&hl=ko&dt=t&dt=bd&dj=1&source=icon&tk=123533.123534&q=" + encodeURI(word, "UTF-8");
+    url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&hl=ko&dt=t&dt=bd&dj=1&source=icon&q=" + encodeURIComponent(word);
     parser = parseGoogleTranslate;
 
     chrome.runtime.sendMessage({ url: url }, function (data) {
@@ -494,6 +502,8 @@ function loadXMLDoc(word) {
 
     guessLanguage.detect(word, function (language) {
         
+        var sentence = word;
+
         if (language == 'zh') {
             if (userOptions["enableChineseKor"] == "false") {
                 $('#dicLayer').hide();
@@ -504,12 +514,12 @@ function loadXMLDoc(word) {
             var regExp = /[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gi;
             word = word.replace(regExp, "");
             if (word.length > 1) {
-                url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=1&nlp=false&wordString=" + encodeURI(word, "UTF-8");
+                url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=1&nlp=false&wordString=" + encodeURIComponent(word);
                 parser = parseChineseKorean;
             }
             else if (word.length == 1)
             {
-                url = "http://hanja.naver.com/hanja?q=" + encodeURI(word, "UTF-8");
+                url = "http://hanja.naver.com/hanja?q=" + encodeURIComponent(word);
                 parser = parseChineseKorean;
             }
             
@@ -525,7 +535,7 @@ function loadXMLDoc(word) {
             word = word.replace(regExp, "");
             
             //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=2&nlp=false&wordString=" + encodeURI(word, "UTF-8");
-            url = "http://dic.daum.net/search.do?dic=jp&search_first=Y&q=" + encodeURI(word, "UTF-8");
+            url = "http://dic.daum.net/search.do?dic=jp&search_first=Y&q=" + encodeURIComponent(word);
             parser = parseJapaneseKorean;
             
         }
@@ -536,7 +546,7 @@ function loadXMLDoc(word) {
                 return;
             }
 
-            url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURI(word, "UTF-8");
+            url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);
             parser = parseKoreanEnglish;        
         }        
         else
@@ -551,7 +561,7 @@ function loadXMLDoc(word) {
             
             word = word.replace(regExp, "");
             
-            url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURI(word, "UTF-8");
+            url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);
             parser = parseKoreanEnglish;            
         }
 
@@ -570,7 +580,13 @@ function loadXMLDoc(word) {
                 else {
                     //loading = false;
                     //foundWord = false;
-                    retryToTranslateEnglishKorean(word, parser);
+                    if ((sentence.match(/ /g) || []).length > 0) {
+                        retryToTranslateEnglishKorean(sentence, parser);
+                    }
+                    else {
+                        loading = false;
+                        foundWord = false;
+                    }
                 }
             }
             else {
@@ -591,8 +607,9 @@ function presentParsedDic(parsedData) {
     }
 
     var soundLoop = userOptions["enablePronunciation"] == "true" ? "autoplay" : "";
-    var soundTag = '<audio id="proa"' + soundLoop + '> <source src="' + parsedData.soundUrl + '">' + '</audio>' +
-                        '<div id="dicImg" onclick="document.getElementById(\'proa\').play()" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" />';
+    var soundTag = //'<audio id="proa"' + soundLoop + '> <source src="' + parsedData.soundUrl + '">' + '</audio>' +
+                        //'<div id="dicImg" onclick="document.getElementById(\'proa\').play()" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" />';
+                        '<div id="dicImg" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" />';
 
     if (parsedData.soundUrl == null)
         soundTag = "";
@@ -607,6 +624,12 @@ function presentParsedDic(parsedData) {
 
     var dicLayer = $("#dicLayer");
     dicLayer.html(htmlData);
+
+    $("#dicLayer #dicImg").click(function () {
+        chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) {
+
+        });
+    });
 
     var x = mouseX;
     var y = mouseY;
