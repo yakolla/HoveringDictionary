@@ -301,8 +301,11 @@ function parseGoogleTranslate(word) {
     var jdata = JSON.parse($("#dicRawData").text());
     
     var meanings = [];
-    if (jdata.sentences)
-        meanings[0] = jdata.sentences[0].trans;
+    if (jdata.sentences) {
+        meanings[0] = "";
+        for (var i = 0; i < jdata.sentences.length; ++i)
+            meanings[0] += jdata.sentences[i].trans;
+    }
 
     if (meanings.length == 0)
         return null;
@@ -625,10 +628,13 @@ function presentParsedDic(parsedData) {
     var dicLayer = $("#dicLayer");
     dicLayer.html(htmlData);
 
-    $("#dicLayer #dicImg").click(function () {
-        chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) {
+    if (userOptions["enablePronunciation"] == "true")
+    {
+        chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
+    }
 
-        });
+    $("#dicLayer #dicImg").click(function () {
+        chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
     });
 
     var x = mouseX;
