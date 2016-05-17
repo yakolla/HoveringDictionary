@@ -6,6 +6,7 @@ var foundWord = false;
 
 var mouseX = 0, mouseY = 0, mouseTarget = null, mousePageX = 0, mousePageY = 0, mousePressed = 0, rMouseX = 0, rMouseY = 0;
 var pageHeight = 0, pageWidth = 0;
+var pressKey = 0;
 var oldWord = null;
 var loading = false;
 var focusIframe = null;
@@ -22,6 +23,7 @@ userOptions["enableJapaneseKor"] = "true";
 userOptions["enableChineseKor"] = "true";
 userOptions["enablePronunciation"] = "false";
 userOptions["enableTranslate"] = "true";
+userOptions["popupKey"] = "0";
 
 function getWordAtPoint(elem, x, y) {
     if (elem == null)
@@ -314,7 +316,7 @@ function parseGoogleTranslate(word) {
     //var soundUrl = "https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=gtx&q=" + sentence;
     var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=ko&q=" + sentence;
     
-    return { word: "", phoneticSymbol: "", soundUrl: soundUrl, meanings: meanings };
+    return { word: "", phoneticSymbol: "", soundUrl: soundUrl, meanings: meanings, isSentence:true };
 }
 /*
 var port = chrome.runtime.connect({ name: "mycontentscript" });
@@ -609,10 +611,7 @@ function presentParsedDic(parsedData) {
         means += '*' + '<dicStrong>' + parsedData.meanings[i] + '</dicStrong></br>';
     }
 
-    var soundLoop = userOptions["enablePronunciation"] == "true" ? "autoplay" : "";
-    var soundTag = //'<audio id="proa"' + soundLoop + '> <source src="' + parsedData.soundUrl + '">' + '</audio>' +
-                        //'<div id="dicImg" onclick="document.getElementById(\'proa\').play()" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" />';
-                        '<div id="dicImg" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" />';
+    var soundTag = '<div id="dicImg" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" />';
 
     if (parsedData.soundUrl == null)
         soundTag = "";
@@ -628,9 +627,15 @@ function presentParsedDic(parsedData) {
     var dicLayer = $("#dicLayer");
     dicLayer.html(htmlData);
 
-    if (userOptions["enablePronunciation"] == "true")
+    if (parsedData.isSentence)
     {
-        chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
+        if (userOptions["enablePronunciation"] == "true")
+            chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
+    }
+    else
+    {
+        if (userOptions["enablePronunciation"] == "true" || userOptions["enablePronunciation"] == "onlyWord")
+            chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
     }
 
     $("#dicLayer #dicImg").click(function () {
@@ -777,6 +782,11 @@ function showWordToolTip() {
     
     if (userOptions["enableTranslate"] == "false")
         return;
+
+    if (userOptions["popupKey"] != "0" && pressKey.toString() != userOptions["popupKey"])
+        return;
+
+    console.debug(userOptions["popupKey"] + " + " + pressKey);
    
     var word = getWordUnderMouse(x, y, target);
 
@@ -789,7 +799,8 @@ function loadOptions() {
                      , "backColor2", "tooltipUpDelayTime", "tooltipDownDelayTime"
                     , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"
                     , "enablePronunciation"
-                   , "enableTranslate"];  // 불러올 항목들의 이름
+                   , "enableTranslate"
+                    , "popupKey"];  // 불러올 항목들의 이름
 
 
     chrome.storage.local.get(keys, function (options) {
@@ -855,7 +866,13 @@ $(document).ready(function () {
             chrome.storage.local.set({ "enableTranslate": userOptions["enableTranslate"] }, function () {
 
             });
-        }        
+        }
+
+        pressKey = 0;
+    });
+
+    $(document).keydown(function (e) {
+        pressKey = e.which;
     });
     
     $(document).mousedown(function (e) {
