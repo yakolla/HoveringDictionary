@@ -12,6 +12,8 @@ function save_options() {
     
     options["tooltipUpDelayTime"] = document.getElementById("tooltipUpDelayedTimeSelector").value;
     options["tooltipDownDelayTime"] = document.getElementById("tooltipDownDelayedTimeSelector").value;
+    options["popupKey"] = document.getElementById("popupKey").value;
+    options["popupOrientation"] = document.getElementById("popupOrientation").value;
 
     options["enableEngKor"] = document.getElementById("enableEngKor").value;
     options["enableKorEng"] = document.getElementById("enableKorEng").value;
@@ -20,7 +22,7 @@ function save_options() {
 
     options["enablePronunciation"] = document.getElementById("enablePronunciation").value;
     options["enableTranslate"] = document.getElementById("enableTranslate").value;
-    options["popupKey"] = document.getElementById("popupKey").value;
+    
     chrome.storage.local.set(options, function () {
        
     });
@@ -34,6 +36,8 @@ function restore_defaults(orage) {
     
     document.getElementById("tooltipUpDelayedTimeSelector").value = "300";
     document.getElementById("tooltipDownDelayedTimeSelector").value = "700";
+    document.getElementById("popupKey").value = "0";
+    document.getElementById("popupOrientation").value = "0";
     
     document.getElementById("backgroundColor1").color.fromString("FFDC00");
     document.getElementById("backgroundColor2").color.fromString("FFEB00");
@@ -45,7 +49,7 @@ function restore_defaults(orage) {
 
     document.getElementById("enablePronunciation").value = "false";
     document.getElementById("enableTranslate").value = "true";
-    document.getElementById("popupKey").value = "0";
+    
 }
 
 function restore_options() {
@@ -54,7 +58,7 @@ function restore_options() {
                     , "fontColor", "backColor1"
                     , "backColor2", "tooltipUpDelayTime", "tooltipDownDelayTime"
                     , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"
-                    , "enablePronunciation", "enableTranslate", "popupKey"
+                    , "enablePronunciation", "enableTranslate", "popupKey", "popupOrientation"
                     ];  // 불러올 항목들의 이름
 
     chrome.storage.local.get(keys, function (options) {
@@ -74,6 +78,8 @@ function restore_options() {
         
         document.getElementById("tooltipUpDelayedTimeSelector").value = options["tooltipUpDelayTime"];
         document.getElementById("tooltipDownDelayedTimeSelector").value = options["tooltipDownDelayTime"];
+        document.getElementById("popupKey").value = options["popupKey"];
+        document.getElementById("popupOrientation").value = options["popupOrientation"];
         
         document.getElementById("enableEngKor").value = options["enableEngKor"];
         document.getElementById("enableKorEng").value = options["enableKorEng"];
@@ -82,7 +88,7 @@ function restore_options() {
 
         document.getElementById("enablePronunciation").value = options["enablePronunciation"];
         document.getElementById("enableTranslate").value = options["enableTranslate"];
-        document.getElementById("popupKey").value = options["popupKey"];
+        
     });
 }
 

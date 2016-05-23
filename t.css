@@ -8,8 +8,9 @@
     background : -webkit-linear-gradient(bottom, rgba(255, 220, 0, 1), rgba(255, 235, 0, 1));
     display : none;
     opacity : 1;
-    box-shadow : 3px 3px 3px #888888;
-    z-index :  10000;
+    border: 1px solid;
+    #box-shadow : 3px 3px 3px #888888;
+    z-index :  10001;
     text-align : left;
     font-size : 12px;
     font-family:Arial;
@@ -17,18 +18,19 @@
     -moz-border-radius:3px;
     -webkit-border-radius:3px;    
 }
-
-#dicLayer:after {
+#dicLayerArrowB,
+#dicLayerArrowF {
   display: block;    
-  position:absolute;
+  position:fixed;
   content: "";  
-  border-color: rgba(255, 235, 0, 1) transparent;
-  border-style: solid;
-  border-width: 0 5px 15px;    
-  width:0;
-  height:0;
-  top:-11px;
-    z-index :  10000;
+  top:10px;
+  z-index :  10002;
+  border: solid 10px transparent;
+}
+
+#dicLayerArrowB {
+    top:9px;
+    z-index:10000;
 }
 
 #ylog{

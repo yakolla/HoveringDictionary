@@ -15,6 +15,8 @@ var contextSelectionWord = null;
 var startTootipTime = 0;
 var maxMeaning = 3;
 
+var arrowSize = 10;
+
 var userOptions = {};
 userOptions["tooltipDownDelayTime"] = 700;
 userOptions["enableEngKor"] = "true";
@@ -24,6 +26,7 @@ userOptions["enableChineseKor"] = "true";
 userOptions["enablePronunciation"] = "false";
 userOptions["enableTranslate"] = "true";
 userOptions["popupKey"] = "0";
+userOptions["popupOrientation"] = "0";
 
 function getWordAtPoint(elem, x, y) {
     if (elem == null)
@@ -625,7 +628,7 @@ function presentParsedDic(parsedData) {
 
 
     var dicLayer = $("#dicLayer");
-    dicLayer.html(htmlData);
+    $("#dicLayerContents").html(htmlData);
 
     if (parsedData.isSentence)
     {
@@ -641,36 +644,86 @@ function presentParsedDic(parsedData) {
     $("#dicLayer #dicImg").click(function () {
         chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
     });
-
+    
+    var topArrow = true;
     var x = mouseX;
     var y = mouseY;
     var gabHeight = 20;
+    var arrowYPos = y;
 
     if (pageWidth < dicLayer.width() + x) {
         x = pageWidth - dicLayer.width();
     }
     
-    if (pageHeight < dicLayer.height() + y + gabHeight) {
-        y = pageHeight - dicLayer.height() - gabHeight;
+    if (userOptions["popupOrientation"] == "1" || pageHeight < dicLayer.height() + y + gabHeight) {
+        //y = pageHeight - dicLayer.height() - gabHeight;
+        y = mouseY - dicLayer.height() - gabHeight - arrowSize * 3;
+        arrowYPos = y + dicLayer.height() + gabHeight + arrowSize / 2 + 1;
+        topArrow = false;
     }
 
+    if (y < 0)
+    {
+        y = mouseY
+        arrowYPos = y;
+        topArrow = true;
+    }
+
+    
     dicLayer.css("left", x + 'px');
     dicLayer.css("top", (y + gabHeight) + 'px');
 
+    var dicLayerArrowB = $("#dicLayerArrowB");
+    var dicLayerArrowF = $("#dicLayerArrowF");
+
     
+    dicLayerArrowB.css("left", (x + arrowSize) + 'px');
+    dicLayerArrowF.css("left", (x + arrowSize) + 'px');
+
+    
+
+    dicLayerArrowB.css("border-bottom-color", '');
+    dicLayerArrowB.css("border-top-color", '');
+    dicLayerArrowF.css("border-bottom-color", '');
+    dicLayerArrowF.css("border-top-color", '');
+
+    if (topArrow == true)
+    {        
+        dicLayerArrowB.css("top", (arrowYPos + 1) + 'px');
+        dicLayerArrowF.css("top", (arrowYPos + 2) + 'px');
+        dicLayerArrowF.css("border-bottom-color", '#' + userOptions['backColor1']);
+        dicLayerArrowB.css("border-bottom-color", 'black');
+    }
+    else
+    {
+        dicLayerArrowB.css("top", (arrowYPos + 1) + 'px');
+        dicLayerArrowF.css("top", (arrowYPos) + 'px');
+        dicLayerArrowF.css("border-top-color", '#' + userOptions['backColor2']);
+        dicLayerArrowB.css("border-top-color", 'black');
+    }
+
     if (userOptions["enableTranslate"] == "true") {
         dicLayer.show();
     }
 }
 
 function createDicionaryLayer() {
-        
-    $("<style type='text/css' id='dicLayerArc' />").appendTo("head");
-
+    
     var myLayer = document.createElement('div');
     myLayer.id = 'dicLayer';
     document.body.appendChild(myLayer);
 
+    var myLayerContents = document.createElement('div');
+    myLayerContents.id = 'dicLayerContents';
+    myLayer.appendChild(myLayerContents);
+
+    var myLayerArrowB = document.createElement('div');
+    myLayerArrowB.id = 'dicLayerArrowB';
+    myLayer.appendChild(myLayerArrowB);
+
+    var myLayerArrowF = document.createElement('div');
+    myLayerArrowF.id = 'dicLayerArrowF';
+    myLayer.appendChild(myLayerArrowF);
 }
 
 function createDicionaryRawData() {
@@ -732,7 +785,13 @@ function hideWordToolTip() {
 
     var word = getWordUnderMouse(mouseX, mouseY, mouseTarget);
     
-    if (word == null || (loading == false && foundWord == false))
+    var hidden = (word == null || (loading == false && foundWord == false));
+    if (word != null && oldWord != word)
+    {
+        hidden = true;
+    }
+    
+    if (hidden == true)
     {
         $('#dicLayer').hide();
         
@@ -785,8 +844,6 @@ function showWordToolTip() {
 
     if (userOptions["popupKey"] != "0" && pressKey.toString() != userOptions["popupKey"])
         return;
-
-    console.debug(userOptions["popupKey"] + " + " + pressKey);
    
     var word = getWordUnderMouse(x, y, target);
 
@@ -800,7 +857,7 @@ function loadOptions() {
                     , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"
                     , "enablePronunciation"
                    , "enableTranslate"
-                    , "popupKey"];  // 불러올 항목들의 이름
+                    , "popupKey", "popupOrientation"];  // 불러올 항목들의 이름
 
 
     chrome.storage.local.get(keys, function (options) {
@@ -822,8 +879,6 @@ function loadOptions() {
         dicLayer.css('font-size', options["fontSize"] + 'px');
         dicLayer.css('font-family', options["fontType"]);
         dicLayer.css('background', '-webkit-linear-gradient(bottom, ' + '#' + options['backColor2'] + ', ' + '#' + options['backColor1'] + ')');
-        $("#dicLayerArc").text("#dicLayer:after{border-color:" + '#' + options['backColor1'] + ' transparent' + ";}");
-        
         
         setInterval(function () { showWordToolTip() }, options['tooltipUpDelayTime']);
         setInterval(function () { hideWordToolTip() }, options['tooltipDownDelayTime']);
@@ -873,6 +928,8 @@ $(document).ready(function () {
 
     $(document).keydown(function (e) {
         pressKey = e.which;
+        if (userOptions["popupKey"] != "0")
+            showWordToolTip();
     });
     
     $(document).mousedown(function (e) {
