@@ -215,7 +215,7 @@ function onMouseMove(e) {
 
 window.onmousemove = onMouseMove;
 
-function parseKoreanEnglish(word) {
+function parseKoreanEnglish(word, lang) {
 
     
     $("#dicRawData .fnt_e11").remove();
@@ -240,7 +240,7 @@ function parseKoreanEnglish(word) {
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
 
-function parseChineseKorean(word) {
+function parseChineseKorean(word, lang) {
     if ($("#dicRawData").text().indexOf("[") == -1)
         return null;
 
@@ -271,7 +271,7 @@ function parseChineseKorean(word) {
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
 
-function parseJapaneseKorean(word) {
+function parseJapaneseKorean(word, lang) {
     if ($("#dicRawData").text().indexOf("[") == -1)
         return null;
     
@@ -296,10 +296,10 @@ function parseJapaneseKorean(word) {
 
     var soundUrl = "http://tts.naver.com/tts/mp3ttsV1.cgi?spk_id=302&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURIComponent(word);
     
-    return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
+    return { word: jdata.word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
 
-function parseGoogleTranslate(word) {
+function parseGoogleTranslate(word, lang) {
     if ($("#dicRawData").text().indexOf("[") == -1)
         return null;
 
@@ -316,8 +316,7 @@ function parseGoogleTranslate(word) {
         return null;
 
     var sentence = encodeURIComponent(meanings[0]);
-    //var soundUrl = "https://translate.google.com/translate_tts?ie=UTF-8&tl=ko&client=gtx&q=" + sentence;
-    var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=ko&q=" + sentence;
+    var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=" + lang + "&q=" + encodeURIComponent(word);
     
     return { word: "", phoneticSymbol: "", soundUrl: soundUrl, meanings: meanings, isSentence:true };
 }
@@ -366,7 +365,7 @@ function setHtmlToDicRawData(word, language, parser, data)
 
             var jsonData = {};
             if (entryTop) {
-
+                jsonData.word = word;
                 jsonData.pinyin = entryTop.find(".sound").text();
                 jsonData.readPronun = entryTop.find(".t_w").text();
                 if (jsonData.readPronun.length == 0) {
@@ -396,21 +395,23 @@ function setHtmlToDicRawData(word, language, parser, data)
     }
     else if (language == 'ja') {
        if (data.indexOf("<html") >= 0) {
-           var entryTop = $(data).find(".sub_word");
+           var entryTop = $(data).find(".cleanword_type");
            
             var jsonData = {};
             if (entryTop) {
-
-                jsonData.pinyin = entryTop.find(".phonetic").text();
+                jsonData.word = entryTop.find(".txt_cleansch").text();
+                if (jsonData.word.length == 0)
+                    return null;
+                jsonData.pinyin = entryTop.find(".sub_txt").text();
                 debugString = jsonData.pinyin;
                 jsonData.mean = [];
 
-                var entry_txt = $(data).find(".list_mean li");
+                var entry_txt = $(data).find(".list_search li");
                 
                 //entry_txt.find("daum\\:word").each(function () {
                 entry_txt.each(function () {
                     var mean = "";
-                    $(this).find("daum\\:word").each(function () {
+                    $(this).find(".txt_search").each(function () {
                         mean += $(this).text();
                     });
                     jsonData.mean.push(mean);
@@ -424,7 +425,7 @@ function setHtmlToDicRawData(word, language, parser, data)
 
     $("#dicRawData").html(data);
 
-    return parser(word);
+    return parser(word, language);
 }
 
 function retryToTranslateChineseKorean(word, parser) {
@@ -470,9 +471,9 @@ function retryToTranslateJapanseKorean(word, parser) {
     chrome.runtime.sendMessage({ url: url }, function (data) {
 
         var parsedData = setHtmlToDicRawData(word, language, parser, data);
-        if (parsedData != null) {
-            presentParsedDic(parsedData); 
-        }
+        if (parsedData != null) {            
+            presentParsedDic(parsedData);
+        }        
 
         foundWord = parsedData != null;
         loading = false;
@@ -480,15 +481,14 @@ function retryToTranslateJapanseKorean(word, parser) {
 }
 
 
-function retryToTranslateEnglishKorean(word, parser) {
+function translateSentence(word, lang, parser) {
     var url = null;
-    var language = 'en';
-    url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&hl=ko&dt=t&dt=bd&dj=1&source=icon&q=" + encodeURIComponent(word);
+    url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + lang + "&tl=ko&hl=ko&dt=t&dt=bd&dj=1&source=icon&q=" + encodeURIComponent(word);
     parser = parseGoogleTranslate;
-
+    
     chrome.runtime.sendMessage({ url: url }, function (data) {
 
-        var parsedData = setHtmlToDicRawData(word, language, parser, data);
+        var parsedData = setHtmlToDicRawData(word, lang, parser, data);
         if (parsedData != null) {
             presentParsedDic(parsedData);
         }
@@ -583,13 +583,13 @@ function loadXMLDoc(word) {
                     retryToTranslateChineseKorean(word, parser);
                 }
                 else if (language == 'ja') {
-                    retryToTranslateJapanseKorean(word, parser);
+                    //retryToTranslateJapanseKorean(word, parser);
+                    
+                    translateSentence(sentence, 'ja', parser);
                 }
                 else {
-                    //loading = false;
-                    //foundWord = false;
                     if ((sentence.match(/ /g) || []).length > 0) {
-                        retryToTranslateEnglishKorean(sentence, parser);
+                        translateSentence(sentence, 'en', parser);
                     }
                     else {
                         loading = false;
