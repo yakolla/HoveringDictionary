@@ -4,6 +4,7 @@ var debugString = null;
 var forceShowToolTip = false;
 var foundWord = false;
 
+var mouseEvent;
 var mouseX = 0, mouseY = 0, mouseTarget = null, mousePageX = 0, mousePageY = 0, mousePressed = 0, rMouseX = 0, rMouseY = 0;
 var pageHeight = 0, pageWidth = 0;
 var pressKey = 0;
@@ -29,47 +30,52 @@ userOptions["popupKey"] = "0";
 userOptions["popupOrientation"] = "0";
 
 function getWordAtPoint(elem, x, y) {
-    if (elem == null)
-        return null;
-    
-    if (elem.nodeType == elem.TEXT_NODE) {
+    return getWordUnderCursor(mouseEvent);
+}
+function getWordUnderCursor(event) {
+    var range, textNode, offset;
 
-        var range = elem.ownerDocument.createRange();
-
-        range.selectNodeContents(elem);
-        var currentPos = 0;
-        var endPos = range.endOffset;
-
-        while (currentPos < endPos) {
-            range.setStart(elem, currentPos);
-            range.setEnd(elem, currentPos + 1);
-            var rect = range.getBoundingClientRect();
-            if (rect.left <= x && rect.right >= x &&
-               rect.top <= y && rect.bottom >= y) {
-                range.expand("word");
-                var ret = range.toString();
-                //range.detach();
-
-                return (ret);
-            }
-
-            currentPos += 1;
-        }
-    } else {
-        for (var i = 0; i < elem.childNodes.length; i++) {
-            var range = elem.childNodes[i].ownerDocument.createRange();
-            range.selectNodeContents(elem.childNodes[i]);
-            var rect = range.getBoundingClientRect();
-            if (rect.left <= x && rect.right >= x &&
-               rect.top <= y && rect.bottom >= y) {
-                //range.detach();
-                return (getWordAtPoint(elem.childNodes[i], x, y));
-            } else {
-                //range.detach();
-            }
+    if (document.body.createTextRange) {           // Internet Explorer
+        try {
+            range = document.body.createTextRange();
+            range.moveToPoint(event.clientX, event.clientY);
+            range.select();
+            range = getTextRangeBoundaryPosition(range, true);
+  
+            textNode = range.node;
+            offset = range.offset;
+        } catch(e) {
+            return "";
         }
     }
-    return (null);
+    else if (document.caretPositionFromPoint) {    // Firefox
+        range = document.caretPositionFromPoint(event.clientX, event.clientY);
+        textNode = range.offsetNode;
+        offset = range.offset;
+    } else if (document.caretRangeFromPoint) {     // Chrome
+        range = document.caretRangeFromPoint(event.clientX, event.clientY);
+        textNode = range.startContainer;
+        offset = range.startOffset;
+    }
+
+    //data contains a full sentence
+    //offset represent the cursor position in this sentence
+    var data = textNode.data,
+        i = offset,
+        begin,
+        end;
+
+    //Find the begin of the word (space)
+    while (i > 0 && data[i] !== " ") { --i; };
+    begin = i;
+
+    //Find the end of the word
+    i = offset;
+    while (i < data.length && data[i] !== " ") { ++i; };
+    end = i;
+
+    //Return the word under the mouse cursor
+    return data.substring(begin, end);
 }
 
 function getCharacterAtPoint(elem, x, y) {
@@ -188,6 +194,7 @@ function onMouseMove(e) {
     
     mousePressed = e.which;
     mouseTarget = e.target;
+    mouseEvent = e;
 
     pageHeight = mouseTarget.ownerDocument.documentElement.clientHeight;
     pageWidth= mouseTarget.ownerDocument.documentElement.clientWidth;
@@ -811,18 +818,8 @@ function showWordToolTipCore(x, y, word, timeDelay)
     
     if (word) {
         word = word.trim();
-        if (oldWord == word)
-            return;
-
-        /*
-        var dicLayer = $("#dicLayer");
-        
-        dicLayer.css("left", x + 'px');
-        dicLayer.css("top", (y + 20) + 'px');
-        */
-        loadXMLDoc(word);
-
-        
+        if (oldWord != word)
+            loadXMLDoc(word);
 
         startTootipTime = new Date().getTime() + timeDelay;
     }
