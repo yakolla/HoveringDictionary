@@ -28,6 +28,7 @@ userOptions["enablePronunciation"] = "false";
 userOptions["enableTranslate"] = "true";
 userOptions["popupKey"] = "0";
 userOptions["popupOrientation"] = "0";
+userOptions["enableEE"] = false;
 
 function getWordAtPoint(elem, x, y) {
     return getWordUnderCursor(mouseEvent);
@@ -64,6 +65,9 @@ function getWordUnderCursor(event) {
         i = offset,
         begin,
         end;
+
+    if (data == null)
+        return "";
 
     //Find the begin of the word (space)
     while (i > 0 && data[i] !== " ") { --i; };
@@ -222,23 +226,182 @@ function onMouseMove(e) {
 
 window.onmousemove = onMouseMove;
 
-function parseKoreanEnglish(word, lang) {
+
+function parseEnglishEnglish(word, lang) {
+    
+    try {
+
+        if (word == null || word.length == 0)
+            return null;
+
+        var jdata = JSON.parse($("#dicRawData").text());
+        if (jdata.entries.length == 0)
+            return null;
+    
+        word = jdata.entries[0].entry;
+        // extract data
+        var phoneticSymbol = '';
+        if (jdata.entries[0].pronunciation_ipa)
+            phoneticSymbol = '[' + jdata.entries[0].pronunciation_ipa + ']';
+
+        var meanings = [];
+        var meaningCount = 0;
+        $.each(jdata.entries[0].definitions, function (key, data) {
+        
+            meanings[meaningCount] = '<hr noshade>';
+            meaningCount++;
+
+            if (key == "i")
+                key = "Idioms";
+            else if (key == "vp")
+                key = "Verb phrases";
+
+            meanings[meaningCount] = '<dicWordClass>' + key + '</dicWordClass></br>';
+            meaningCount++;
+
+            var count = 0;
+        
+            $.each(data, function (index, data) {
+            
+                if (key == "Idioms")
+                {
+                    if (data.type == "simple")
+                    {
+                        ++count;
+                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.label + '</dicMean></br>';
+                        meaningCount++;
+
+                        meanings[meaningCount] = '<dicMean>' + data.definition.content + '</dicMean></br>';
+                        meaningCount++;
+                    }
+                    else if (data.type == "group") {
+                        ++count;
+                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.group_label + '</dicMean></br>';
+                        meaningCount++;
+
+                        $.each(data.definitions, function (index2, data2) {
+                            meanings[meaningCount] = '<dicMean>' + data2.content + '</dicMean></br>';
+                            meaningCount++;
+                        });
+                    
+                    }
+                
+                }
+                else if (key == "Verb phrases")
+                {
+                    if (data.type == "simple") {
+                        ++count;
+                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.label + '</dicMean></br>';
+                        meaningCount++;
+
+                        meanings[meaningCount] = '<dicMean>' + data.definition.content + '</dicMean></br>';
+                        meaningCount++;
+                    }
+                    else if (data.type == "group") {
+                        ++count;
+                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.group_label + '</dicMean></br>';
+                        meaningCount++;
+
+                        $.each(data.definitions, function (index2, data2) {
+                            meanings[meaningCount] = '<dicMean>' + data2.content + '</dicMean></br>';
+                            meaningCount++;
+                        });
+                    }
+                }
+                else
+                {
+                    if (data.type == "simple")
+                    {
+                        if (data.definition.label == null)
+                        {
+                            ++count;
+                            meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.content + '</dicMean></br>';
+                            meaningCount++;
+                        }
+                        else
+                        {
+                            ++count;
+                            meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.label + '</dicMean></br>';
+                            meaningCount++;
+
+                            meanings[meaningCount] = '<dicMean>' + data.definition.content + '</dicMean></br>';
+                            meaningCount++;
+                        }
+                    
+                    }
+                    else if (data.type == "group") {
+                        ++count;
+                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.group_label + '</dicMean></br>';
+                        meaningCount++;
+
+                        $.each(data.definitions, function (index2, data2) {
+                            meanings[meaningCount] = '<dicMean>' + data2.content + '</dicMean></br>';
+                            meaningCount++;
+                        });
+                    }
+                
+                }
+            
+            
+            })
+        });
 
     
+        $.each(jdata.entries[0].supnt_data, function (key, data) {
+
+            if ("synonyms" == key || "antonyms" == key)
+            {
+                meanings[meaningCount] = '<hr noshade>';
+                meaningCount++;
+
+                meanings[meaningCount] = '<dicWordClass>' + key + '</dicWordClass></br>';
+                meaningCount++;
+
+                $.each(data, function (index, data) {
+
+                    if (data.type == "syndesc" || data.type == "antdesc")
+                    {
+                        meanings[meaningCount] = '<dicMean>' + data.value + '</dicMean></br>';
+                        meaningCount++;
+                    }
+                });
+            }
+        
+        
+        });
+    
+        if (meanings.length == 0)
+            return null;
+
+        var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=" + lang + "&q=" + encodeURIComponent(word);
+
+        return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
+    }
+    catch(err)
+    {
+        return null;
+    }
+}
+
+function parseKoreanEnglish(word, lang) {
+
+    $("#dicRawData").html($("#dicRawData").text());
     $("#dicRawData .fnt_e11").remove();
     // extract data
+    word = $("#dicRawData .t1:first").text();
     var phoneticSymbol = $("#dicRawData .t2:first").text();
 
     var soundUrl = $("#dicRawData #pron_en").attr('playlist');
 
     var meanings = [];
     var meaningCount = 0;
-    $("#dicRawData .list_ex1 .first").each(function () {
-        if (meaningCount >= maxMeaning)
-            return;
-
-        meanings[meaningCount] = $(this).text();
+    var count = 0;
+    $("#dicRawData dt[class!=last]").each(function () {
+        
+        ++count;
+        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + $(this).text() + '</dicMean></br>';
         meaningCount++;
+
     });
 
     if (meanings.length == 0)
@@ -264,9 +427,7 @@ function parseChineseKorean(word, lang) {
     var meanings = [];
 
     for (var meaningCount in jdata.mean) {
-        if (meaningCount >= maxMeaning)
-            break;
-
+    
         meanings[meaningCount] = jdata.mean[meaningCount];
     }
     
@@ -292,9 +453,7 @@ function parseJapaneseKorean(word, lang) {
     var meanings = [];
 
     for (var meaningCount in jdata.mean) {
-        if (meaningCount >= maxMeaning)
-            break;
-
+    
         meanings[meaningCount] = jdata.mean[meaningCount];
     }
 
@@ -307,45 +466,30 @@ function parseJapaneseKorean(word, lang) {
 }
 
 function parseGoogleTranslate(word, lang) {
-    if ($("#dicRawData").text().indexOf("[") == -1)
-        return null;
-
-    var jdata = JSON.parse($("#dicRawData").text());
     
-    var meanings = [];
-    if (jdata.sentences) {
-        meanings[0] = "";
-        for (var i = 0; i < jdata.sentences.length; ++i)
-            meanings[0] += jdata.sentences[i].trans;
+    try {
+        var jdata = JSON.parse($("#dicRawData").text());
+    
+        var meanings = [];
+        if (jdata.sentences) {
+            meanings[0] = "";
+            for (var i = 0; i < jdata.sentences.length; ++i)
+                meanings[0] += jdata.sentences[i].trans;
+        }
+
+        if (meanings.length == 0)
+            return null;
+
+        var sentence = encodeURIComponent(meanings[0]);
+        var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=" + lang + "&q=" + encodeURIComponent(word);
+    
+        return { word: "", phoneticSymbol: "", soundUrl: soundUrl, meanings: meanings, isSentence:true };
     }
-
-    if (meanings.length == 0)
+    catch (err) {
         return null;
-
-    var sentence = encodeURIComponent(meanings[0]);
-    var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=" + lang + "&q=" + encodeURIComponent(word);
-    
-    return { word: "", phoneticSymbol: "", soundUrl: soundUrl, meanings: meanings, isSentence:true };
+    }
 }
-/*
-var port = chrome.runtime.connect({ name: "mycontentscript" });
-port.onMessage.addListener(function (message, sender) {
 
-    if (message.id == 1)
-    {
-        contextSelectionWord = message.greeting;
-
-        showWordToolTipCore(rMouseX, rMouseY, message.greeting, 1000);
-    }
-    else if (message.id == 2)
-    {
-        var e = jQuery.Event("keyup");
-        e.which = 192; // # Some key code value
-        e.keyCode = 192;
-        $(document).trigger(e);
-    }
-});
-*/
 chrome.runtime.onMessage.addListener(onMessageProc);
 
 function onMessageProc(request, sender, sendResponse) {
@@ -429,8 +573,7 @@ function setHtmlToDicRawData(word, language, parser, data)
             }
         }
     }
-
-    $("#dicRawData").html(data);
+    $("#dicRawData").text(data);
 
     return parser(word, language);
 }
@@ -445,7 +588,7 @@ function retryToTranslateChineseKorean(word, parser) {
 
         var parsedData = setHtmlToDicRawData(word, language, parser, data);
         if (parsedData != null) {
-            presentParsedDic(parsedData);
+            presentParsedDic(language, parsedData);
             loading = false;
             foundWord = true;
         }
@@ -456,7 +599,7 @@ function retryToTranslateChineseKorean(word, parser) {
             chrome.runtime.sendMessage({ url: url }, function (data) {
                 var parsedData = setHtmlToDicRawData(word, language, parser, data);
                 if (parsedData != null) {
-                    presentParsedDic(parsedData);                    
+                    presentParsedDic(language, parsedData);
                 }
 
                 foundWord = parsedData != null;
@@ -479,7 +622,7 @@ function retryToTranslateJapanseKorean(word, parser) {
 
         var parsedData = setHtmlToDicRawData(word, language, parser, data);
         if (parsedData != null) {            
-            presentParsedDic(parsedData);
+            presentParsedDic(language, parsedData);
         }        
 
         foundWord = parsedData != null;
@@ -497,7 +640,7 @@ function translateSentence(word, lang, parser) {
 
         var parsedData = setHtmlToDicRawData(word, lang, parser, data);
         if (parsedData != null) {
-            presentParsedDic(parsedData);
+            presentParsedDic(lang, parsedData);
         }
 
         foundWord = parsedData != null;
@@ -560,7 +703,7 @@ function loadXMLDoc(word) {
                 foundWord = false;
                 return;
             }
-
+            
             url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);
             parser = parseKoreanEnglish;        
         }        
@@ -571,13 +714,20 @@ function loadXMLDoc(word) {
                 foundWord = false;
                 return;
             }
-            
+            language = 'en';
             var regExp = /[0-9\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gim;
             
             word = word.replace(regExp, "");
-            
-            url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);
-            parser = parseKoreanEnglish;            
+            if (userOptions["enableEE"] == true)
+            {
+                url = "http://restapi.dictionary.com/v2/word.json/" + encodeURIComponent(word) + "/complete?api_key=sWq3tLz8ifndaTK&platform=Chrome&app_id=chromeExtension_1.1&clickSource=Popup";
+                parser = parseEnglishEnglish;
+            }
+            else
+            {
+                url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);
+                parser = parseKoreanEnglish;
+            }
         }
 
         loading = true;
@@ -605,7 +755,7 @@ function loadXMLDoc(word) {
                 }
             }
             else {
-                presentParsedDic(parsedData);
+                presentParsedDic(language, parsedData);
                 foundWord = true;
                 loading = false;
             }
@@ -614,11 +764,17 @@ function loadXMLDoc(word) {
     });
 }
 
-function presentParsedDic(parsedData) {    
+function presentParsedDic(language, parsedData) {
 
     var means = "";
     for (var i in parsedData.meanings) {
-        means += '*' + '<dicStrong>' + parsedData.meanings[i] + '</dicStrong></br>';
+        if (parsedData.meanings[i].indexOf('<') == 0)
+        {
+            means += parsedData.meanings[i];
+            continue;
+        }
+
+        means += '*' + '<dicStrong>' + parsedData.meanings[i] + '</dicStrong></br>';        
     }
 
     var soundTag = '<div id="dicImg" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" />';
@@ -626,9 +782,18 @@ function presentParsedDic(parsedData) {
     if (parsedData.soundUrl == null)
         soundTag = "";
 
+    var eeTag = "";
+    if (language == "en") {
+        if (userOptions["enableEE"] == true)
+            eeTag = '  <input type="checkbox" id="ee" checked />Eng';
+        else   
+            eeTag = '  <input type="checkbox" id="ee" />Eng';
+    }
+
     var htmlData = parsedData.word +
                         soundTag +
                         parsedData.phoneticSymbol +
+                        eeTag +
                          '</br>' +
                          '</br>' +
                         means;
@@ -652,6 +817,15 @@ function presentParsedDic(parsedData) {
         chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
     });
     
+    $("#dicLayer #ee").click(function () {
+
+        userOptions["enableEE"] = $(this).is(":checked");
+        chrome.storage.local.set({ "enableEE": userOptions["enableEE"] }, function () {
+
+        });
+        
+    });
+
     var topArrow = true;
     var x = mouseX;
     var y = mouseY;
@@ -854,22 +1028,15 @@ function loadOptions() {
                     , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"
                     , "enablePronunciation"
                    , "enableTranslate"
-                    , "popupKey", "popupOrientation"];  // 불러올 항목들의 이름
+                    , "popupKey", "popupOrientation", "enableEE"];  // 불러올 항목들의 이름
 
 
     chrome.storage.local.get(keys, function (options) {
-        /*
-        if (!options["fontSize"]) {
-            setInterval(function () { hideWordToolTip() }, 90);
-            setInterval(function () { showWordToolTip() }, 90);
-            return;
-        }*/
-
-        if (options["fontSize"])
-        {
-            userOptions = options;
-        }
-
+        
+        $.each(options, function (key, data) {
+            userOptions[key] = data;
+        });
+        
         var dicLayer = $("#dicLayer");
 
         dicLayer.css('color', '#' + options['fontColor']);
@@ -889,16 +1056,7 @@ $(document).ready(function () {
     
     if (debug == true)
         createLogDiv();
-   
-    /*
-    $('iframe').contents().mousemove(onMouseMove);
-    $("iframe").hover(function () {
-        focusIframe = this;
-    }, function () {
-        focusIframe = null;
 
-    });
-    */
     loadOptions();   
 
     $(document).keyup(function (e) {
