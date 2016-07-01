@@ -2,7 +2,7 @@
     "manifest_version": 2,
     "name": "Cool Tooltip Dictionary 2014",
     "description": "영어, 일어, 중어, 한자에 마우스를 올리면 툴팁 사전이 뜹니다.",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "content_scripts": [
         {
             "matches": [ "<all_urls>" ],

@@ -21,7 +21,7 @@ var arrowSize = 10;
 var userOptions = {};
 userOptions["tooltipDownDelayTime"] = 700;
 userOptions["enableEngKor"] = "true";
-userOptions["enableKorEng"] = "true";
+userOptions["enableKorEng"] = "false";
 userOptions["enableJapaneseKor"] = "true";
 userOptions["enableChineseKor"] = "true";
 userOptions["enablePronunciation"] = "false";
@@ -29,35 +29,23 @@ userOptions["enableTranslate"] = "true";
 userOptions["popupKey"] = "0";
 userOptions["popupOrientation"] = "0";
 userOptions["enableEE"] = false;
+userOptions["enableHanja"] = false;
 
-function getWordAtPoint(elem, x, y) {
-    return getWordUnderCursor(mouseEvent);
-}
+
 function getWordUnderCursor(event) {
     var range, textNode, offset;
 
-    if (document.body.createTextRange) {           // Internet Explorer
-        try {
-            range = document.body.createTextRange();
-            range.moveToPoint(event.clientX, event.clientY);
-            range.select();
-            range = getTextRangeBoundaryPosition(range, true);
-  
-            textNode = range.node;
-            offset = range.offset;
-        } catch(e) {
-            return "";
-        }
-    }
-    else if (document.caretPositionFromPoint) {    // Firefox
-        range = document.caretPositionFromPoint(event.clientX, event.clientY);
-        textNode = range.offsetNode;
-        offset = range.offset;
-    } else if (document.caretRangeFromPoint) {     // Chrome
+    if (document.caretRangeFromPoint) {     // Chrome
         range = document.caretRangeFromPoint(event.clientX, event.clientY);
+        if (range == null)
+            return null;
+
         textNode = range.startContainer;
         offset = range.startOffset;
     }
+
+    if (range.startOffset + range.endOffset == 0)
+        return null;
 
     //data contains a full sentence
     //offset represent the cursor position in this sentence
@@ -67,7 +55,7 @@ function getWordUnderCursor(event) {
         end;
 
     if (data == null)
-        return "";
+        return null;
 
     //Find the begin of the word (space)
     while (i > 0 && data[i] !== " ") { --i; };
@@ -263,10 +251,13 @@ function parseEnglishEnglish(word, lang) {
         
             $.each(data, function (index, data) {
             
-                if (key == "Idioms")
-                {
-                    if (data.type == "simple")
-                    {
+                if (data.type == "simple") {
+                    if (data.definition.label == null) {
+                        ++count;
+                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.content + '</dicMean></br>';
+                        meaningCount++;
+                    }
+                    else {
                         ++count;
                         meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.label + '</dicMean></br>';
                         meaningCount++;
@@ -274,72 +265,17 @@ function parseEnglishEnglish(word, lang) {
                         meanings[meaningCount] = '<dicMean>' + data.definition.content + '</dicMean></br>';
                         meaningCount++;
                     }
-                    else if (data.type == "group") {
-                        ++count;
-                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.group_label + '</dicMean></br>';
-                        meaningCount++;
 
-                        $.each(data.definitions, function (index2, data2) {
-                            meanings[meaningCount] = '<dicMean>' + data2.content + '</dicMean></br>';
-                            meaningCount++;
-                        });
-                    
-                    }
-                
                 }
-                else if (key == "Verb phrases")
-                {
-                    if (data.type == "simple") {
-                        ++count;
-                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.label + '</dicMean></br>';
-                        meaningCount++;
+                else if (data.type == "group") {
+                    ++count;
+                    meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.group_label + '</dicMean></br>';
+                    meaningCount++;
 
-                        meanings[meaningCount] = '<dicMean>' + data.definition.content + '</dicMean></br>';
+                    $.each(data.definitions, function (index2, data2) {
+                        meanings[meaningCount] = '<dicMean>' + data2.content + '</dicMean></br>';
                         meaningCount++;
-                    }
-                    else if (data.type == "group") {
-                        ++count;
-                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.group_label + '</dicMean></br>';
-                        meaningCount++;
-
-                        $.each(data.definitions, function (index2, data2) {
-                            meanings[meaningCount] = '<dicMean>' + data2.content + '</dicMean></br>';
-                            meaningCount++;
-                        });
-                    }
-                }
-                else
-                {
-                    if (data.type == "simple")
-                    {
-                        if (data.definition.label == null)
-                        {
-                            ++count;
-                            meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.content + '</dicMean></br>';
-                            meaningCount++;
-                        }
-                        else
-                        {
-                            ++count;
-                            meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.label + '</dicMean></br>';
-                            meaningCount++;
-
-                            meanings[meaningCount] = '<dicMean>' + data.definition.content + '</dicMean></br>';
-                            meaningCount++;
-                        }
-                    
-                    }
-                    else if (data.type == "group") {
-                        ++count;
-                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.group_label + '</dicMean></br>';
-                        meaningCount++;
-
-                        $.each(data.definitions, function (index2, data2) {
-                            meanings[meaningCount] = '<dicMean>' + data2.content + '</dicMean></br>';
-                            meaningCount++;
-                        });
-                    }
-                
+                    });
                 }
             
             
@@ -414,7 +350,7 @@ function parseChineseKorean(word, lang) {
     if ($("#dicRawData").text().indexOf("[") == -1)
         return null;
 
-    var jdata = JSON.parse($("#dicRawData").text());   
+    var jdata = JSON.parse($("#dicRawData").text());
     
     // extract data
     var phoneticSymbol = '';
@@ -425,12 +361,43 @@ function parseChineseKorean(word, lang) {
         phoneticSymbol = phoneticSymbol + '[' + jdata.readPronun + ']';
     
     var meanings = [];
-
+    var count = 0;
     for (var meaningCount in jdata.mean) {
-    
-        meanings[meaningCount] = jdata.mean[meaningCount];
+        ++count;
+        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + jdata.mean[meaningCount] + '</dicMean></br>';
+        
     }
     
+    if (meanings.length == 0)
+        return null;
+
+    var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURIComponent(word);
+
+    return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
+}
+
+function parseHanjaKorean(word, lang) {
+    if ($("#dicRawData").text().indexOf("[") == -1)
+        return null;
+
+    var jdata = JSON.parse($("#dicRawData").text());
+        
+    // extract data
+    var phoneticSymbol = '';
+    if (jdata.pinyin)
+        phoneticSymbol = '[' + jdata.pinyin + ']';
+
+    if (jdata.readPronun)
+        phoneticSymbol = phoneticSymbol + '[' + jdata.readPronun + ']';
+
+    var meanings = [];
+    var count = 0;
+    for (var meaningCount in jdata.mean) {
+        ++count;
+        meanings[meaningCount] = '<dicMean>' + jdata.mean[meaningCount] + '</dicMean></br>';
+
+    }
+
     if (meanings.length == 0)
         return null;
 
@@ -554,7 +521,7 @@ function setHtmlToDicRawData(word, language, parser, data)
                 if (jsonData.word.length == 0)
                     return null;
                 jsonData.pinyin = entryTop.find(".sub_txt").text();
-                debugString = jsonData.pinyin;
+                
                 jsonData.mean = [];
 
                 var entry_txt = $(data).find(".list_search li");
@@ -578,12 +545,11 @@ function setHtmlToDicRawData(word, language, parser, data)
     return parser(word, language);
 }
 
-function retryToTranslateChineseKorean(word, parser) {
-    var url = null;
+function translateHanjaKorean(word) {
     var language = 'zh';
+    var url = "http://hanja.naver.com/word?q=" + encodeURIComponent(word);
+    var parser = parseHanjaKorean;
 
-    url = "http://hanja.naver.com/word?q=" + encodeURIComponent(word);
-    
     chrome.runtime.sendMessage({ url: url }, function (data) {
 
         var parsedData = setHtmlToDicRawData(word, language, parser, data);
@@ -671,16 +637,15 @@ function loadXMLDoc(word) {
 
             var regExp = /[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gi;
             word = word.replace(regExp, "");
-            if (word.length > 1) {
+
+            if (userOptions["enableHanja"] == true) {
+                translateHanjaKorean(word);
+                return;
+            }
+            else {
                 url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=1&nlp=false&wordString=" + encodeURIComponent(word);
                 parser = parseChineseKorean;
             }
-            else if (word.length == 1)
-            {
-                url = "http://hanja.naver.com/hanja?q=" + encodeURIComponent(word);
-                parser = parseChineseKorean;
-            }
-            
         }
         else if (language == 'ja') {
             if (userOptions["enableJapaneseKor"] == "false") {
@@ -736,13 +701,14 @@ function loadXMLDoc(word) {
             var parsedData = setHtmlToDicRawData(word, language, parser, data);
             
             if (parsedData == null) {
-                if (language == 'zh') {                    
-                    retryToTranslateChineseKorean(word, parser);
+                if (language == 'zh') {
+                    translateSentence(sentence, language, parser);
+                    //retryToTranslateChineseKorean(word, parser);
                 }
                 else if (language == 'ja') {
                     //retryToTranslateJapanseKorean(word, parser);
                     
-                    translateSentence(sentence, 'ja', parser);
+                    translateSentence(sentence, language, parser);
                 }
                 else {
                     if ((sentence.match(/ /g) || []).length > 0) {
@@ -783,12 +749,30 @@ function presentParsedDic(language, parsedData) {
         soundTag = "";
 
     var eeTag = "";
+    var eeCheckBox = false;
+    var eeOptionName = null;
+    var eeLableName = null;
     if (language == "en") {
-        if (userOptions["enableEE"] == true)
-            eeTag = '  <input type="checkbox" id="ee" checked />Eng';
-        else   
-            eeTag = '  <input type="checkbox" id="ee" />Eng';
+        eeOptionName = "enableEE";
+        eeLableName = "Eng";
+        if (userOptions[eeOptionName] == true)
+            eeCheckBox = true;        
     }
+    else if (language == "zh") {
+        eeOptionName = "enableHanja";
+        eeLableName = "Hanja";
+        if (userOptions[eeOptionName] == true)
+            eeCheckBox = true;
+    }
+    
+    if (eeLableName != null)
+    {
+        if (eeCheckBox == true)
+            eeTag = '  <input type="checkbox" id="ee" checked />' + eeLableName;
+        else
+            eeTag = '  <input type="checkbox" id="ee" />' + eeLableName;
+    }
+    
 
     var htmlData = parsedData.word +
                         soundTag +
@@ -797,7 +781,6 @@ function presentParsedDic(language, parsedData) {
                          '</br>' +
                          '</br>' +
                         means;
-
 
     var dicLayer = $("#dicLayer");
     $("#dicLayerContents").html(htmlData);
@@ -818,11 +801,20 @@ function presentParsedDic(language, parsedData) {
     });
     
     $("#dicLayer #ee").click(function () {
+        userOptions[eeOptionName] = $(this).is(":checked");
+            
+        if (language == "en") {
+            chrome.storage.local.set({ "enableEE": userOptions[eeOptionName] }, function () {
 
-        userOptions["enableEE"] = $(this).is(":checked");
-        chrome.storage.local.set({ "enableEE": userOptions["enableEE"] }, function () {
+            });
+        }
+        else if (language == "zh") {
+            chrome.storage.local.set({ "enableHanja": userOptions[eeOptionName] }, function () {
 
-        });
+            });
+        }
+
+        
         
     });
 
@@ -953,7 +945,7 @@ function getWordUnderMouse(x, y, target) {
         return contextSelectionWord;
     }
     
-    return getWordAtPoint(target, x, y);
+    return getWordUnderCursor(mouseEvent);
 }
 
 function hideWordToolTip() {
@@ -966,7 +958,7 @@ function hideWordToolTip() {
 
     var word = getWordUnderMouse(mouseX, mouseY, mouseTarget);
     
-    var hidden = (word == null || (loading == false && foundWord == false));
+    var hidden = (word == null || word.length == 0 || (loading == false && foundWord == false));
     if (word != null && oldWord != word)
     {
         hidden = true;
@@ -1028,7 +1020,7 @@ function loadOptions() {
                     , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"
                     , "enablePronunciation"
                    , "enableTranslate"
-                    , "popupKey", "popupOrientation", "enableEE"];  // 불러올 항목들의 이름
+                    , "popupKey", "popupOrientation", "enableEE", "enableHanja"];  // 불러올 항목들의 이름
 
 
     chrome.storage.local.get(keys, function (options) {
