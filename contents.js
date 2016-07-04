@@ -2,16 +2,16 @@
 var wordForDebug = null;
 var debugString = null;
 var forceShowToolTip = false;
-var foundWord = false;
+var foundWord = null;
 
 var mouseEvent;
 var mouseX = 0, mouseY = 0, mouseTarget = null, mousePageX = 0, mousePageY = 0, mousePressed = 0, rMouseX = 0, rMouseY = 0;
 var pageHeight = 0, pageWidth = 0;
 var pressKey = 0;
-var oldWord = null;
 var loading = false;
 var focusIframe = null;
 var contextSelectionWord = null;
+var maxSentenceLen = 90;
 
 var startTootipTime = 0;
 var maxMeaning = 3;
@@ -336,6 +336,7 @@ function parseKoreanEnglish(word, lang) {
         
         ++count;
         meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + $(this).text() + '</dicMean></br>';
+        
         meaningCount++;
 
     });
@@ -346,7 +347,7 @@ function parseKoreanEnglish(word, lang) {
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
 
-function parseChineseKorean(word, lang) {
+function parseChineseKorean2(word, lang) {
     if ($("#dicRawData").text().indexOf("[") == -1)
         return null;
 
@@ -376,6 +377,33 @@ function parseChineseKorean(word, lang) {
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
 
+
+function parseChineseKorean(word, lang) {
+    if ($("#dicRawData").text().indexOf("[") == -1)
+        return null;
+
+    var jdata = JSON.parse($("#dicRawData").text());
+
+    // extract data
+    var phoneticSymbol = '';
+    if (jdata.pinyin)
+        phoneticSymbol = jdata.pinyin;
+
+    var meanings = [];
+
+    for (var meaningCount in jdata.mean) {
+
+        meanings[meaningCount] = '<dicMean>' + jdata.mean[meaningCount] + '</dicMean></br>';
+    }
+    
+    if (meanings.length == 0)
+        return null;
+
+    var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURIComponent(word);
+
+    return { word: jdata.word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
+}
+
 function parseHanjaKorean(word, lang) {
     if ($("#dicRawData").text().indexOf("[") == -1)
         return null;
@@ -385,7 +413,7 @@ function parseHanjaKorean(word, lang) {
     // extract data
     var phoneticSymbol = '';
     if (jdata.pinyin)
-        phoneticSymbol = '[' + jdata.pinyin + ']';
+        phoneticSymbol = jdata.pinyin;
 
     if (jdata.readPronun)
         phoneticSymbol = phoneticSymbol + '[' + jdata.readPronun + ']';
@@ -400,10 +428,10 @@ function parseHanjaKorean(word, lang) {
 
     if (meanings.length == 0)
         return null;
-
+    
     var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURIComponent(word);
 
-    return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
+    return { word: jdata.word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
 
 function parseJapaneseKorean(word, lang) {
@@ -450,7 +478,7 @@ function parseGoogleTranslate(word, lang) {
         var sentence = encodeURIComponent(meanings[0]);
         var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=" + lang + "&q=" + encodeURIComponent(word);
     
-        return { word: "", phoneticSymbol: "", soundUrl: soundUrl, meanings: meanings, isSentence:true };
+        return { word: word, phoneticSymbol: "", soundUrl: soundUrl, meanings: meanings, isSentence:true };
     }
     catch (err) {
         return null;
@@ -474,41 +502,93 @@ function onMessageProc(request, sender, sendResponse) {
 }
 
 
-function setHtmlToDicRawData(word, language, parser, data)
+function convertRawDataToJson(word, language, parser, data)
 {
+    if (data == null)
+        return null;
+
     if (language == 'zh')
     {
         if (data.indexOf("<html") >= 0) {
-            var entryTop = $(data).find(".entrytop_box");
-
+            
             var jsonData = {};
-            if (entryTop) {
-                jsonData.word = word;
-                jsonData.pinyin = entryTop.find(".sound").text();
-                jsonData.readPronun = entryTop.find(".t_w").text();
-                if (jsonData.readPronun.length == 0) {
-                    jsonData.readPronun = entryTop.find("dd strong").text();
-                }
-                
-                jsonData.readPronun = jsonData.readPronun + entryTop.find(".t_letter").text();                   
-                
+            jsonData.word = $(data).find(".word_result  dl dt:first .sc").text();
+            
+            if (jsonData.word.length == word.length)
+            {
+                $(data).find(".word_result  dl dd:first .left .sc").each(function () {
+                    jsonData.word += '(' + $(this).text() + ')';
+                });
+                jsonData.pinyin = $(data).find(".word_result  dl dt:first .py").text();
                 jsonData.mean = [];
-
-                var entry_txt = $(data).find(".entry_txt p");
-
-                if (entry_txt) {
-                    if (entry_txt.text().length)
-                        jsonData.mean.push(entry_txt.text());
-                }
-                
-                $(data).find(".kinds_list li").each(function () {
+                $(data).find(".word_result  dl dd:first li").each(function () {
                     jsonData.mean.push($(this).text());
                 });
-
-                
-                data = JSON.stringify(jsonData);
-                //console.debug(data);
             }
+           
+            
+            data = JSON.stringify(jsonData);
+        }
+    }
+    else if (language == 'hanja') {
+        if (data.indexOf("<html") >= 0) {
+
+            var jsonData = {};
+            jsonData.word = $(data).find(".result_chn_chr:first  dl dt").text();
+            jsonData.pinyin = "";
+            
+            jsonData.readPronun = $(data).find(".result_chn_chr:first  .single dd .sound").text();
+            jsonData.mean = [];
+
+            if (jsonData.word.length > 1)
+            {
+                var sumWord = $(data).find(".result_chn_words:first dl dd a span:first").text();
+
+                if (sumWord.length > 0)
+                    jsonData.pinyin += '[' + sumWord + ']';
+
+                $(data).find(".result_chn_words:first .meaning:first").each(function () {
+                    jsonData.mean.push($(this).text());
+                });
+            }
+            else
+            {
+                $(data).find(".result_chn_chr:first dl dd a span").each(function () {
+                    jsonData.pinyin += '[' + $(this).text() + ']';
+                });
+            }
+            /*
+            $(data).find(".result_chn_chr:first .meaning").each(function () {
+                jsonData.mean.push($(this).text());
+            });*/
+
+            $(data).find(".result_chn_chr:first").each(function () {
+
+                var hanjas = [];
+                $(this).find("dl dt a").each(function () {
+                    hanjas.push($(this).text());
+                });
+
+                var hunms = [];
+                $(this).find("dd a span").each(function () {
+                    hunms.push($(this).text());
+                });
+
+                var meanings = [];
+                $(this).find(".meaning").each(function () {
+                    meanings.push($(this).text());
+                });
+
+                for (var i = 0; i < hunms.length; ++i)
+                {
+                    jsonData.mean.push('<hr noshade>');
+                    jsonData.mean.push('<dicWordClass>' + hanjas[i] + ' ' + '[' + hunms[i] + ']' + '</dicWordClass>');
+                    jsonData.mean.push(meanings[i]);
+                }
+                
+            });
+
+            data = JSON.stringify(jsonData);
         }
     }
     else if (language == 'ja') {
@@ -536,44 +616,12 @@ function setHtmlToDicRawData(word, language, parser, data)
                 });
 
                 data = JSON.stringify(jsonData);
-                //console.debug(data);
             }
         }
     }
     $("#dicRawData").text(data);
 
     return parser(word, language);
-}
-
-function translateHanjaKorean(word) {
-    var language = 'zh';
-    var url = "http://hanja.naver.com/word?q=" + encodeURIComponent(word);
-    var parser = parseHanjaKorean;
-
-    chrome.runtime.sendMessage({ url: url }, function (data) {
-
-        var parsedData = setHtmlToDicRawData(word, language, parser, data);
-        if (parsedData != null) {
-            presentParsedDic(language, parsedData);
-            loading = false;
-            foundWord = true;
-        }
-        else {
-            word = getCharacterAtPoint(mouseTarget, mouseX, mouseY);
-            url = "http://hanja.naver.com/hanja?q=" + encodeURIComponent(word);
-
-            chrome.runtime.sendMessage({ url: url }, function (data) {
-                var parsedData = setHtmlToDicRawData(word, language, parser, data);
-                if (parsedData != null) {
-                    presentParsedDic(language, parsedData);
-                }
-
-                foundWord = parsedData != null;
-                loading = false;
-            });
-        }
-
-    });
 }
 
 function retryToTranslateJapanseKorean(word, parser) {
@@ -586,12 +634,12 @@ function retryToTranslateJapanseKorean(word, parser) {
 
     chrome.runtime.sendMessage({ url: url }, function (data) {
 
-        var parsedData = setHtmlToDicRawData(word, language, parser, data);
+        var parsedData = convertRawDataToJson(word, language, parser, data);
         if (parsedData != null) {            
             presentParsedDic(language, parsedData);
         }        
 
-        foundWord = parsedData != null;
+        foundWord = word;
         loading = false;
     });
 }
@@ -604,19 +652,19 @@ function translateSentence(word, lang, parser) {
     
     chrome.runtime.sendMessage({ url: url }, function (data) {
 
-        var parsedData = setHtmlToDicRawData(word, lang, parser, data);
+        var parsedData = convertRawDataToJson(word, lang, parser, data);
         if (parsedData != null) {
             presentParsedDic(lang, parsedData);
         }
 
-        foundWord = parsedData != null;
+        foundWord = word;
         loading = false;
     });
 }
 
 
 
-function loadXMLDoc(word) {
+function loadWordMeaningFromWeb(word) {
 
     if (loading == true)
         return;
@@ -631,7 +679,7 @@ function loadXMLDoc(word) {
         if (language == 'zh') {
             if (userOptions["enableChineseKor"] == "false") {
                 $('#dicLayer').hide();
-                foundWord = false;
+                foundWord = null;
                 return;
             }
 
@@ -639,18 +687,20 @@ function loadXMLDoc(word) {
             word = word.replace(regExp, "");
 
             if (userOptions["enableHanja"] == true) {
-                translateHanjaKorean(word);
-                return;
+                language = 'hanja';
+                url = "http://hanja.naver.com/search?query=" + encodeURIComponent(word);
+                parser = parseHanjaKorean;
             }
             else {
-                url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=1&nlp=false&wordString=" + encodeURIComponent(word);
+                //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=1&nlp=false&wordString=" + encodeURIComponent(word);
+                url = "http://cndic.naver.com/search/all?q=" + encodeURIComponent(word);
                 parser = parseChineseKorean;
             }
         }
         else if (language == 'ja') {
             if (userOptions["enableJapaneseKor"] == "false") {
                 $('#dicLayer').hide();
-                foundWord = false;
+                foundWord = null;
                 return;
             }
 
@@ -665,7 +715,7 @@ function loadXMLDoc(word) {
         else if (language == 'ko') {
             if (userOptions["enableKorEng"] == "false") {
                 $('#dicLayer').hide();
-                foundWord = false;
+                foundWord = null;
                 return;
             }
             
@@ -676,7 +726,7 @@ function loadXMLDoc(word) {
         {
             if (userOptions["enableEngKor"] == "false") {
                 $('#dicLayer').hide();
-                foundWord = false;
+                foundWord = null;
                 return;
             }
             language = 'en';
@@ -695,19 +745,28 @@ function loadXMLDoc(word) {
             }
         }
 
+        if (word == null || word.length == 0 || foundWord == word)
+            return null;
+
         loading = true;
         
         chrome.runtime.sendMessage({ url: url}, function (data) {
-            var parsedData = setHtmlToDicRawData(word, language, parser, data);
+            var parsedData = convertRawDataToJson(word, language, parser, data);
             
             if (parsedData == null) {
                 if (language == 'zh') {
+                    if (sentence.length > maxSentenceLen)
+                    {
+                        sentence = sentence.substring(0, maxSentenceLen-1);
+                    }
                     translateSentence(sentence, language, parser);
                     //retryToTranslateChineseKorean(word, parser);
                 }
                 else if (language == 'ja') {
                     //retryToTranslateJapanseKorean(word, parser);
-                    
+                    if (sentence.length > maxSentenceLen) {
+                        sentence = sentence.substring(0, maxSentenceLen-1);
+                    }
                     translateSentence(sentence, language, parser);
                 }
                 else {
@@ -716,13 +775,13 @@ function loadXMLDoc(word) {
                     }
                     else {
                         loading = false;
-                        foundWord = false;
+                        foundWord = null;
                     }
                 }
             }
             else {
                 presentParsedDic(language, parsedData);
-                foundWord = true;
+                foundWord = word;
                 loading = false;
             }
         });
@@ -731,17 +790,6 @@ function loadXMLDoc(word) {
 }
 
 function presentParsedDic(language, parsedData) {
-
-    var means = "";
-    for (var i in parsedData.meanings) {
-        if (parsedData.meanings[i].indexOf('<') == 0)
-        {
-            means += parsedData.meanings[i];
-            continue;
-        }
-
-        means += '*' + '<dicStrong>' + parsedData.meanings[i] + '</dicStrong></br>';        
-    }
 
     var soundTag = '<div id="dicImg" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" />';
 
@@ -758,7 +806,7 @@ function presentParsedDic(language, parsedData) {
         if (userOptions[eeOptionName] == true)
             eeCheckBox = true;        
     }
-    else if (language == "zh") {
+    else if (language == "zh" || language == "hanja") {
         eeOptionName = "enableHanja";
         eeLableName = "Hanja";
         if (userOptions[eeOptionName] == true)
@@ -773,18 +821,18 @@ function presentParsedDic(language, parsedData) {
             eeTag = '  <input type="checkbox" id="ee" />' + eeLableName;
     }
     
+    var htmlData = '<dicWord>' + parsedData.word + parsedData.phoneticSymbol + '</dicWord>' + '<dicWord>' + soundTag + eeTag + '</dicWord>' +
+                         '</br>' +
+                         '</br>';
 
-    var htmlData = parsedData.word +
-                        soundTag +
-                        parsedData.phoneticSymbol +
-                        eeTag +
-                         '</br>' +
-                         '</br>' +
-                        means;
+    for (var meaningCount in parsedData.meanings) {
+        htmlData += parsedData.meanings[meaningCount];
+        
+    }
 
     var dicLayer = $("#dicLayer");
     $("#dicLayerContents").html(htmlData);
-
+    
     if (parsedData.isSentence)
     {
         if (userOptions["enablePronunciation"] == "true")
@@ -808,7 +856,7 @@ function presentParsedDic(language, parsedData) {
 
             });
         }
-        else if (language == "zh") {
+        else if (language == "zh" || language == "hanja") {
             chrome.storage.local.set({ "enableHanja": userOptions[eeOptionName] }, function () {
 
             });
@@ -927,13 +975,13 @@ function InDicLayer(target)
 function getWordUnderMouse(x, y, target) {
 
     if (forceShowToolTip == true)
-        return oldWord;
+        return foundWord;
 
     if (target == null)
         return null;
 
     if (InDicLayer(target))
-        return oldWord;
+        return foundWord;
 
     var selWord = getSelectedWord().toString();
     if (selWord.length) {        
@@ -958,9 +1006,9 @@ function hideWordToolTip() {
 
     var word = getWordUnderMouse(mouseX, mouseY, mouseTarget);
     
-    var hidden = (word == null || word.length == 0 || (loading == false && foundWord == false));
-    if (word != null && oldWord != word)
-    {
+    var hidden = (word == null || word.length == 0 || (loading == false));
+    if (word != null && foundWord != word)
+    {        
         hidden = true;
     }
     
@@ -974,27 +1022,24 @@ function hideWordToolTip() {
                 window.getSelection().removeAllRanges();
         }
 
-        oldWord = null;
+        foundWord = null;
     }
 }
 
 function showWordToolTipCore(x, y, word, timeDelay)
 {
     wordForDebug = word;
-    
+   
     if (word) {
         word = word.trim();
-        if (oldWord != word)
-            loadXMLDoc(word);
-
+        
+        loadWordMeaningFromWeb(word);
+        
         startTootipTime = new Date().getTime() + timeDelay;
     }
     else {
         //$('#dicLayer').hide();
     }
-
-
-    oldWord = word;
 }
 
 function showWordToolTip() {
