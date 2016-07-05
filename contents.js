@@ -44,9 +44,6 @@ function getWordUnderCursor(event) {
         offset = range.startOffset;
     }
 
-    if (range.startOffset + range.endOffset == 0)
-        return null;
-
     //data contains a full sentence
     //offset represent the cursor position in this sentence
     var data = textNode.data,
@@ -67,7 +64,19 @@ function getWordUnderCursor(event) {
     end = i;
 
     //Return the word under the mouse cursor
-    return data.substring(begin, end);
+
+    var resultString = data.substring(begin, end);
+    range.setStart(textNode, 0);
+    range.setEnd(textNode, textNode.length);
+
+    var rect = range.getBoundingClientRect();    
+    if (rect.left > event.clientX || rect.right < event.clientX ||
+               rect.top > event.clientY || rect.bottom < event.clientY) {
+
+        return null;
+    }
+
+    return resultString;
 }
 
 function getCharacterAtPoint(elem, x, y) {
@@ -755,6 +764,7 @@ function loadWordMeaningFromWeb(word) {
                     translateSentence(sentence, language, parser);
                 }
                 else {
+
                     if ((sentence.match(/ /g) || []).length > 0) {
                         translateSentence(sentence, 'en', parser);
                     }
