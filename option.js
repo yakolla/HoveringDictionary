@@ -43,7 +43,7 @@ function restore_defaults(orage) {
     document.getElementById("backgroundColor2").color.fromString("FFEB00");
     
     document.getElementById("enableEngKor").value = "true";
-    document.getElementById("enableKorEng").value = "true";
+    document.getElementById("enableKorEng").value = "false";
     document.getElementById("enableJapaneseKor").value = "true";
     document.getElementById("enableChineseKor").value = "true";
 

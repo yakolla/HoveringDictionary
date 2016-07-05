@@ -455,7 +455,7 @@ function parseJapaneseKorean(word, lang) {
     if (meanings.length == 0)
         return null;
 
-    var soundUrl = "http://tts.naver.com/tts/mp3ttsV1.cgi?spk_id=302&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURIComponent(word);
+    var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=" + lang + "&q=" + encodeURIComponent(jdata.word);
     
     return { word: jdata.word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
@@ -557,10 +557,6 @@ function convertRawDataToJson(word, language, parser, data)
                     jsonData.pinyin += '[' + $(this).text() + ']';
                 });
             }
-            /*
-            $(data).find(".result_chn_chr:first .meaning").each(function () {
-                jsonData.mean.push($(this).text());
-            });*/
 
             $(data).find(".result_chn_chr:first").each(function () {
 
@@ -592,58 +588,53 @@ function convertRawDataToJson(word, language, parser, data)
         }
     }
     else if (language == 'ja') {
-       if (data.indexOf("<html") >= 0) {
-           var entryTop = $(data).find(".cleanword_type");
-           
+        if (data.indexOf("<html") >= 0) {
+
             var jsonData = {};
-            if (entryTop) {
-                jsonData.word = entryTop.find(".txt_cleansch").text();
-                if (jsonData.word.length == 0)
-                    return null;
-                jsonData.pinyin = entryTop.find(".sub_txt").text();
-                
+            jsonData.word = $(data).find(".cleanword_type:first .txt_emph1:first").text();
+            
+            if (jsonData.word != null && jsonData.word.length > 0)
+            {
+                jsonData.pinyin = "";
                 jsonData.mean = [];
 
-                var entry_txt = $(data).find(".list_search li");
-                
-                //entry_txt.find("daum\\:word").each(function () {
-                entry_txt.each(function () {
-                    var mean = "";
-                    $(this).find(".txt_search").each(function () {
-                        mean += $(this).text();
-                    });
-                    jsonData.mean.push(mean);
-                });
+                $(data).find(".search_box:first").each(function () {
 
-                data = JSON.stringify(jsonData);
+                    var japans = [];
+                    $(this).find(".txt_emph1").each(function () {
+                        japans.push($(this).text());
+                    });
+
+                    var hanjas = [];
+                    $(this).find(".sub_txt").each(function () {
+                        hanjas.push($(this).text());
+                    });
+
+                    var meanings = [];
+                    $(this).find(".list_search").each(function () {
+                        meanings.push($(this).text());
+                    });
+
+                    for (var i = 0; i < japans.length; ++i) {
+                        jsonData.mean.push('<hr noshade>');
+                        if (hanjas[i])
+                            jsonData.mean.push('<dicWordClass>' + japans[i] + ' ' + '[' + hanjas[i] + ']' + '</dicWordClass></br>');
+                        else
+                            jsonData.mean.push('<dicWordClass>' + japans[i] + '</dicWordClass></br>');
+                        jsonData.mean.push(meanings[i]);
+                    }
+
+                });
             }
+            
+            data = JSON.stringify(jsonData);
+            
         }
     }
     $("#dicRawData").text(data);
 
     return parser(word, language);
 }
-
-function retryToTranslateJapanseKorean(word, parser) {
-    var url = null;
-    var language = 'ja';
-
-    word = getCharacterAtPoint(mouseTarget, mouseX, mouseY);
-    url = "http://dic.daum.net/search.do?dic=jp&search_first=Y&q=" + encodeURIComponent(word);
-    //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=2&nlp=false&wordString=" + encodeURI(word, "UTF-8");
-
-    chrome.runtime.sendMessage({ url: url }, function (data) {
-
-        var parsedData = convertRawDataToJson(word, language, parser, data);
-        if (parsedData != null) {            
-            presentParsedDic(language, parsedData);
-        }        
-
-        foundWord = word;
-        loading = false;
-    });
-}
-
 
 function translateSentence(word, lang, parser) {
     var url = null;
@@ -708,7 +699,7 @@ function loadWordMeaningFromWeb(word) {
             word = word.replace(regExp, "");
             
             //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=2&nlp=false&wordString=" + encodeURI(word, "UTF-8");
-            url = "http://dic.daum.net/search.do?dic=jp&search_first=Y&q=" + encodeURIComponent(word);
+            url = "http://dic.daum.net/search.do?dic=jpq&q=" + encodeURIComponent(word);
             parser = parseJapaneseKorean;
             
         }
@@ -745,7 +736,13 @@ function loadWordMeaningFromWeb(word) {
             }
         }
 
-        if (word == null || word.length == 0 || foundWord == word)
+        if (language == 'zh' || language == 'ja') {
+            if (sentence.length > maxSentenceLen) {
+                sentence = sentence.substring(0, maxSentenceLen - 1);
+            }
+        }
+        
+        if (word == null || word.length == 0 || foundWord == word || foundWord == sentence)
             return null;
 
         loading = true;
@@ -754,19 +751,7 @@ function loadWordMeaningFromWeb(word) {
             var parsedData = convertRawDataToJson(word, language, parser, data);
             
             if (parsedData == null) {
-                if (language == 'zh') {
-                    if (sentence.length > maxSentenceLen)
-                    {
-                        sentence = sentence.substring(0, maxSentenceLen-1);
-                    }
-                    translateSentence(sentence, language, parser);
-                    //retryToTranslateChineseKorean(word, parser);
-                }
-                else if (language == 'ja') {
-                    //retryToTranslateJapanseKorean(word, parser);
-                    if (sentence.length > maxSentenceLen) {
-                        sentence = sentence.substring(0, maxSentenceLen-1);
-                    }
+                if (language == 'zh' || language == 'ja') {
                     translateSentence(sentence, language, parser);
                 }
                 else {
@@ -898,10 +883,8 @@ function presentParsedDic(language, parsedData) {
     var dicLayerArrowF = $("#dicLayerArrowF");
 
     
-    dicLayerArrowB.css("left", (x + arrowSize) + 'px');
+    dicLayerArrowB.css("left", (x + arrowSize/2) + 'px');
     dicLayerArrowF.css("left", (x + arrowSize) + 'px');
-
-    
 
     dicLayerArrowB.css("border-bottom-color", '');
     dicLayerArrowB.css("border-top-color", '');
