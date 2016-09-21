@@ -66,8 +66,8 @@ function getWordUnderCursor(event) {
     //Return the word under the mouse cursor
 
     var resultString = data.substring(begin, end);
-    range.setStart(textNode, 0);
-    range.setEnd(textNode, textNode.length);
+    range.setStart(textNode, begin);
+    range.setEnd(textNode, end);
 
     var rect = range.getBoundingClientRect();    
     if (rect.left > event.clientX || rect.right < event.clientX ||
@@ -75,7 +75,7 @@ function getWordUnderCursor(event) {
 
         return null;
     }
-
+    
     return resultString;
 }
 
@@ -753,7 +753,7 @@ function loadWordMeaningFromWeb(word) {
         
         if (word == null || word.length == 0 || foundWord == word || foundWord == sentence)
             return null;
-
+        
         loading = true;
         
         chrome.runtime.sendMessage({ url: url}, function (data) {
@@ -768,7 +768,7 @@ function loadWordMeaningFromWeb(word) {
                     if ((sentence.match(/ /g) || []).length > 0) {
                         translateSentence(sentence, 'en', parser);
                     }
-                    else {
+                    else {                        
                         loading = false;
                         foundWord = null;
                     }
@@ -999,11 +999,12 @@ function hideWordToolTip() {
 
     var word = getWordUnderMouse(mouseX, mouseY, mouseTarget);
     
-    var hidden = (word == null || word.length == 0 || (loading == false));
-    if (word != null && foundWord != word)
+    //var hidden = (word == null || word.length == 0 || (loading == false));
+    var hidden = (word == null || word.length == 0);
+    /*if (word != null && foundWord != word)
     {        
         hidden = true;
-    }
+    }*/
     
     if (hidden == true)
     {
@@ -1014,7 +1015,6 @@ function hideWordToolTip() {
             if (window.getSelection)
                 window.getSelection().removeAllRanges();
         }
-
         foundWord = null;
     }
 }
