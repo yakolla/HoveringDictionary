@@ -674,6 +674,11 @@ function loadWordMeaningFromWeb(word) {
 
     guessLanguage.detect(word, function (language) {
         
+        // 중국어라 감지되었지만, 중국어 사전이 꺼지고, 일본어 사전이 켜진 경우에는 일본어로 감지시키자.
+        if (language == 'zh') {
+            if (userOptions["enableChineseKor"] == "false" && userOptions["enableJapaneseKor"] == "true")
+                language = 'ja';
+        }
         var sentence = word;
 
         if (language == 'zh') {

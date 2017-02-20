@@ -21,7 +21,7 @@
     overflow:auto;
     
 }
-br {
+#dicLayer br {
         line-height: 120%;
     }
 #dicLayer::-webkit-scrollbar {
