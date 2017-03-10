@@ -70,17 +70,17 @@
     pointer-events:none;
 }
 
-dicWord {
+#dicLayer dicWord {
      max-width: 300px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; display: inline-block;
 }
 
-dicWordClass {
+#dicLayer dicWordClass {
     font-weight: bold;
     font-style: italic;
     line-height:150%;
 }
 
-dicMean {
+#dicLayer dicMean {
     
     font-weight: bold;
     padding-left: 15px;
@@ -90,14 +90,14 @@ dicMean {
 
 
 
-dicCount {
+#dicLayer dicCount {
     font-weight: bold !important;
     float: left;
     padding-right: 5px;
     display: block;
 }
 
-.dbus_example {
+#dicLayer .dbus_example {
     font-weight: normal;
     font-style: italic;
     display: block;
@@ -107,4 +107,9 @@ dicCount {
     width:19px;
     height:18px;
     display: inline-block;
+}
+
+#dicLayer dicBRLine {
+	border-top: 1px solid;
+    display: block;
 }

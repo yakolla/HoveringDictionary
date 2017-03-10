@@ -17,6 +17,8 @@ var startTootipTime = 0;
 var maxMeaning = 3;
 
 var arrowSize = 10;
+//var brLine = '<hr noshade>';
+var brLine = '<dicBRLine>';
 
 var userOptions = {};
 userOptions["tooltipDownDelayTime"] = 700;
@@ -245,7 +247,7 @@ function parseEnglishEnglish(word, lang) {
         var meaningCount = 0;
         $.each(jdata.entries[0].definitions, function (key, data) {
         
-            meanings[meaningCount] = '<hr noshade>';
+            meanings[meaningCount] = brLine;
             meaningCount++;
 
             if (key == "i")
@@ -296,7 +298,7 @@ function parseEnglishEnglish(word, lang) {
 
             if ("synonyms" == key || "antonyms" == key)
             {
-                meanings[meaningCount] = '<hr noshade>';
+                meanings[meaningCount] = brLine;
                 meaningCount++;
 
                 meanings[meaningCount] = '<dicWordClass>' + key + '</dicWordClass></br>';
@@ -518,26 +520,7 @@ function convertRawDataToJson(word, language, parser, data)
 
     if (language == 'zh')
     {
-        if (data.indexOf("<html") >= 0) {
-            
-            var jsonData = {};
-            jsonData.word = $(data).find(".word_result  dl dt:first .sc").text();
-            
-            if (jsonData.word.length == word.length)
-            {
-                $(data).find(".word_result  dl dd:first .left .sc").each(function () {
-                    jsonData.word += '(' + $(this).text() + ')';
-                });
-                jsonData.pinyin = $(data).find(".word_result  dl dt:first .py").text();
-                jsonData.mean = [];
-                $(data).find(".word_result  dl dd:first li").each(function () {
-                    jsonData.mean.push($(this).text());
-                });
-            }
-           
-            
-            data = JSON.stringify(jsonData);
-        }
+        data = convertRawDataToJsonForNaverChiness(word, parser, data);
     }
     else if (language == 'hanja') {
         if (data.indexOf("<html") >= 0) {
@@ -586,7 +569,7 @@ function convertRawDataToJson(word, language, parser, data)
 
                 for (var i = 0; i < hunms.length; ++i)
                 {
-                    jsonData.mean.push('<hr noshade>');
+                    jsonData.mean.push(brLine);
                     jsonData.mean.push('<dicWordClass>' + hanjas[i] + ' ' + '[' + hunms[i] + ']' + '</dicWordClass>');
                     jsonData.mean.push(meanings[i]);
                 }
@@ -597,52 +580,151 @@ function convertRawDataToJson(word, language, parser, data)
         }
     }
     else if (language == 'ja') {
-        if (data.indexOf("<html") >= 0) {
-
-            var jsonData = {};
-            jsonData.word = $(data).find(".cleanword_type:first .txt_emph1:first").text();
-            
-            if (jsonData.word != null && jsonData.word.length > 0)
-            {
-                jsonData.pinyin = "";
-                jsonData.mean = [];
-
-                $(data).find(".search_box:first").each(function () {
-
-                    var japans = [];
-                    $(this).find(".txt_emph1").each(function () {
-                        japans.push($(this).text());
-                    });
-
-                    var hanjas = [];
-                    $(this).find(".sub_txt").each(function () {
-                        hanjas.push($(this).text());
-                    });
-
-                    var meanings = [];
-                    $(this).find(".list_search").each(function () {
-                        meanings.push($(this).text());
-                    });
-
-                    for (var i = 0; i < japans.length; ++i) {
-                        jsonData.mean.push('<hr noshade>');
-                        if (hanjas[i])
-                            jsonData.mean.push('<dicWordClass>' + japans[i] + ' ' + '[' + hanjas[i] + ']' + '</dicWordClass></br>');
-                        else
-                            jsonData.mean.push('<dicWordClass>' + japans[i] + '</dicWordClass></br>');
-                        jsonData.mean.push(meanings[i]);
-                    }
-
-                });
-            }
-            
-            data = JSON.stringify(jsonData);
-            
-        }
+        data = convertRawDataToJsonForNaverJapan(word, parser, data);
     }
     $("#dicRawData").text(data);
 
     return parser(word, language);
+}
+
+function convertRawDataToJsonForDaumJapan(word, parser, data)
+{    
+    if (data.indexOf("<html") >= 0) {
+
+        var jsonData = {};
+        jsonData.word = $(data).find(".cleanword_type:first .txt_emph1:first").text();
+
+        if (jsonData.word != null && jsonData.word.length > 0) {
+            jsonData.pinyin = "";
+            jsonData.mean = [];
+
+            $(data).find(".search_box:first").each(function () {
+
+                var japans = [];
+                $(this).find(".txt_emph1").each(function () {
+                    japans.push($(this).text());
+                });
+
+                var hanjas = [];
+                $(this).find(".sub_txt").each(function () {
+                    hanjas.push($(this).text());
+                });
+
+                var meanings = [];
+                $(this).find(".list_search").each(function () {
+                    meanings.push($(this).text());
+                });
+
+                for (var i = 0; i < japans.length; ++i) {
+                    jsonData.mean.push(brLine);
+                    if (hanjas[i])
+                        jsonData.mean.push('<dicWordClass>' + japans[i] + ' ' + '[' + hanjas[i] + ']' + '</dicWordClass></br>');
+                    else
+                        jsonData.mean.push('<dicWordClass>' + japans[i] + '</dicWordClass></br>');
+                    jsonData.mean.push(meanings[i]);
+                }
+
+            });
+        }
+
+        return JSON.stringify(jsonData);
+
+    }
+
+    return data;
+}
+
+function convertRawDataToJsonForNaverChiness(word, parser, data) {
+    if (data.indexOf("<html") >= 0) {
+
+        var jsonData = {};
+        jsonData.mean = [];
+        var natives = [];
+        var meanings = [];
+        $(data).find("div.word_result").each(function () {
+            $(this).find("dt").each(function () {
+                
+                natives.push($(this).find(".sc").text().replace(/\s+/g, '') + $(this).find(".py").text().replace(/\s+/g, ''));
+            });
+
+            $(this).find("dd").each(function () {
+                var mean = "";
+                var means = []
+                $(this).find("li").each(function () {
+                    means.push($(this).text().replace(/\s+/g,''));
+                });
+
+                for (var i = 0; i < means.length; ++i)
+                    mean += '</br>' + means[i];
+
+                meanings.push(mean);
+            });
+        });
+
+        for (var i = 0; i < natives.length; ++i)
+        {
+            jsonData.word = natives[0];
+            jsonData.mean.push(brLine);
+            jsonData.mean.push('<dicWordClass>' + natives[i] + '</dicWordClass></br>');
+            jsonData.mean.push(meanings[i] + '</br></br>');
+        }
+        
+        data = JSON.stringify(jsonData);
+    }
+
+    return data;
+}
+function convertRawDataToJsonForNaverJapan(word, parser, data) {
+    if (data.indexOf("<html") >= 0) {
+                
+        var jsonData = {};
+       
+        jsonData.pinyin = "";
+        jsonData.mean = [];
+        var natives = [];
+        var meanings = [];
+        $(data).find("div.section.all.section_word").each(function () {
+            
+            $(this).find(".srch_box").each(function () {
+
+                natives.push($(this).find(".srch_top .entry").text());
+                var mean = $(this).find(".pin").text();
+
+                var subLable = [];
+                var subMean = [];
+                $(this).find(".top_dn dt").each(function () {                    
+                    subLable.push($(this).text());
+                });
+                $(this).find(".top_dn dd").each(function () {                    
+                    subMean.push($(this).text());
+                });
+
+                for (var i = 0; i < subLable.length; ++i)
+                {
+                    mean += '</br>' + subLable[i] + ' ' +subMean[i];
+                }
+            
+                var i = 1;
+                $(this).find(".inner_lst").each(function () {
+                    mean += '</br>' + i + '.'+ $(this).text();
+                    ++i;
+                });
+                meanings.push(mean);
+            });
+        });
+        
+        for (var i = 0; i < natives.length; ++i) {
+            jsonData.word = natives[0];
+            jsonData.mean.push(brLine);
+            jsonData.mean.push('<dicWordClass>' + natives[i] + '</dicWordClass></br>');
+            jsonData.mean.push(meanings[i] + '</br></br>');
+        }
+
+        return JSON.stringify(jsonData);
+
+    }
+
+    return data;
 }
 
 function translateSentence(word, lang, parser) {
@@ -652,10 +734,8 @@ function translateSentence(word, lang, parser) {
     
     chrome.runtime.sendMessage({ url: url }, function (data) {
 
-        var parsedData = convertRawDataToJson(word, lang, parser, data);
-        if (parsedData != null) {
-            presentParsedDic(lang, parsedData);
-        }
+        var parsedData = convertRawDataToJson(word, lang, parser, data);        
+        presentParsedDic(lang, parsedData);
 
         foundWord = word;
         loading = false;
@@ -713,7 +793,8 @@ function loadWordMeaningFromWeb(word) {
             word = word.replace(regExp, "");
             
             //url = "http://tooltip.dic.naver.com/tooltip.nhn?languageCode=2&nlp=false&wordString=" + encodeURI(word, "UTF-8");
-            url = "http://dic.daum.net/search.do?dic=jpq&q=" + encodeURIComponent(word);
+            //url = "http://dic.daum.net/search.do?dic=jpq&q=" + encodeURIComponent(word);
+            url = "http://jpdic.naver.com/search.nhn?range=all&q=" + encodeURIComponent(word);
             parser = parseJapaneseKorean;
             
         }
@@ -763,26 +844,43 @@ function loadWordMeaningFromWeb(word) {
         
         chrome.runtime.sendMessage({ url: url}, function (data) {
             var parsedData = convertRawDataToJson(word, language, parser, data);
-            
-            if (parsedData == null) {
+            if (parsedData != null) {
                 if (language == 'zh' || language == 'ja') {
-                    translateSentence(sentence, language, parser);
-                }
-                else {
+                    
+                    var correctSearch = false;
+                    for (var i = 0; i < parsedData.meanings.length; ++i) {
+                        if (0 <= parsedData.meanings[i].search(word)) {
+                            
+                            correctSearch = true;
+                            break;
+                        }
+                    }
 
-                    if ((sentence.match(/ /g) || []).length > 0) {
-                        translateSentence(sentence, 'en', parser);
-                    }
-                    else {                        
-                        loading = false;
-                        foundWord = null;
+                    if (correctSearch == false) {
+                        translateSentence(sentence, language, parser);
+                        return;
                     }
                 }
-            }
-            else {
+                
                 presentParsedDic(language, parsedData);
                 foundWord = word;
                 loading = false;
+                return;
+                
+            }
+
+            if (language == 'zh' || language == 'ja') {
+                translateSentence(sentence, language, parser);
+            }
+            else {
+
+                if ((sentence.match(/ /g) || []).length > 0) {
+                    translateSentence(sentence, 'en', parser);
+                }
+                else {                        
+                    loading = false;
+                    foundWord = null;
+                }
             }
         });
        
@@ -832,7 +930,8 @@ function presentParsedDic(language, parsedData) {
 
     var dicLayer = $("#dicLayer");
     $("#dicLayerContents").html(htmlData);
-    
+    dicLayer.scrollTop(0);
+
     if (parsedData.isSentence)
     {
         if (userOptions["enablePronunciation"] == "true")
