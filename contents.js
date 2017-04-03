@@ -734,10 +734,15 @@ function translateSentence(word, lang, parser) {
     
     chrome.runtime.sendMessage({ url: url }, function (data) {
 
-        var parsedData = convertRawDataToJson(word, lang, parser, data);        
-        presentParsedDic(lang, parsedData);
-
-        foundWord = word;
+        var parsedData = convertRawDataToJson(word, lang, parser, data);
+        if (parsedData != null) {
+            presentParsedDic(lang, parsedData);
+            foundWord = word;
+        }
+        else
+        {
+            foundWord = null;
+        }
         loading = false;
     });
 }
