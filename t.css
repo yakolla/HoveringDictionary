@@ -23,7 +23,10 @@
 }
 #dicLayer br {
         line-height: 120%;
-    }
+}
+#dicLayer dicBR {
+        line-height: 120%;
+}
 #dicLayer::-webkit-scrollbar {
     width: 9px;
 }

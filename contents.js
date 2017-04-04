@@ -17,8 +17,9 @@ var startTootipTime = 0;
 var maxMeaning = 3;
 
 var arrowSize = 10;
-//var brLine = '<hr noshade>';
-var brLine = '<dicBRLine>';
+//var bridgeLine = '<hr noshade>';
+var bridgeLine = '<dicbridgeLine>';
+var brTag = '<br></br>';
 
 var userOptions = {};
 userOptions["tooltipDownDelayTime"] = 700;
@@ -247,7 +248,7 @@ function parseEnglishEnglish(word, lang) {
         var meaningCount = 0;
         $.each(jdata.entries[0].definitions, function (key, data) {
         
-            meanings[meaningCount] = brLine;
+            meanings[meaningCount] = bridgeLine;
             meaningCount++;
 
             if (key == "i")
@@ -255,7 +256,7 @@ function parseEnglishEnglish(word, lang) {
             else if (key == "vp")
                 key = "Verb phrases";
 
-            meanings[meaningCount] = '<dicWordClass>' + key + '</dicWordClass></br>';
+            meanings[meaningCount] = '<dicWordClass>' + key + '</dicWordClass>' + brTag;
             meaningCount++;
 
             var count = 0;
@@ -265,26 +266,26 @@ function parseEnglishEnglish(word, lang) {
                 if (data.type == "simple") {
                     if (data.definition.label == null) {
                         ++count;
-                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.content + '</dicMean></br>';
+                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.content + '</dicMean>' + brTag;
                         meaningCount++;
                     }
                     else {
                         ++count;
-                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.label + '</dicMean></br>';
+                        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.definition.label + '</dicMean>' + brTag;
                         meaningCount++;
 
-                        meanings[meaningCount] = '<dicMean>' + data.definition.content + '</dicMean></br>';
+                        meanings[meaningCount] = '<dicMean>' + data.definition.content + '</dicMean>' + brTag;
                         meaningCount++;
                     }
 
                 }
                 else if (data.type == "group") {
                     ++count;
-                    meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.group_label + '</dicMean></br>';
+                    meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + data.group_label + '</dicMean>' + brTag;
                     meaningCount++;
 
                     $.each(data.definitions, function (index2, data2) {
-                        meanings[meaningCount] = '<dicMean>' + data2.content + '</dicMean></br>';
+                        meanings[meaningCount] = '<dicMean>' + data2.content + '</dicMean>' + brTag;
                         meaningCount++;
                     });
                 }
@@ -298,17 +299,17 @@ function parseEnglishEnglish(word, lang) {
 
             if ("synonyms" == key || "antonyms" == key)
             {
-                meanings[meaningCount] = brLine;
+                meanings[meaningCount] = bridgeLine;
                 meaningCount++;
 
-                meanings[meaningCount] = '<dicWordClass>' + key + '</dicWordClass></br>';
+                meanings[meaningCount] = '<dicWordClass>' + key + '</dicWordClass>' + brTag;
                 meaningCount++;
 
                 $.each(data, function (index, data) {
 
                     if (data.type == "syndesc" || data.type == "antdesc")
                     {
-                        meanings[meaningCount] = '<dicMean>' + data.value + '</dicMean></br>';
+                        meanings[meaningCount] = '<dicMean>' + data.value + '</dicMean>' + brTag;
                         meaningCount++;
                     }
                 });
@@ -330,9 +331,20 @@ function parseEnglishEnglish(word, lang) {
     }
 }
 
-function parseKoreanEnglish(word, lang) {
+function parseKoreanEnglish2(word, lang) {
+    $(data).find("div.word_result").each(function () {
 
-    $("#dicRawData").html($("#dicRawData").text());
+    });
+    // naver 결과가 xhtml에 맞지 않는구나..
+    try {
+        document.getElementById("dicRawData").innerHTML = $("#dicRawData").text();
+    }
+    catch (err) {
+        $("#dicRawData").text($("#dicRawData").text() + '</div>');
+        $("#dicRawData").html($("#dicRawData").text());
+    }
+    
+    
     $("#dicRawData .fnt_e11").remove();
     // extract data
     word = $("#dicRawData .t1:first").text();
@@ -346,7 +358,7 @@ function parseKoreanEnglish(word, lang) {
     $("#dicRawData dt[class!=last]").each(function () {
         
         ++count;
-        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + $(this).text() + '</dicMean></br>';
+        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + $(this).text() + '</dicMean>' + brTag;
         
         meaningCount++;
 
@@ -358,36 +370,24 @@ function parseKoreanEnglish(word, lang) {
     return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
 }
 
-function parseChineseKorean2(word, lang) {
+function parseKoreanEnglish(word, lang) {
     if ($("#dicRawData").text().indexOf("[") == -1)
         return null;
 
     var jdata = JSON.parse($("#dicRawData").text());
     
-    // extract data
-    var phoneticSymbol = '';
-    if (jdata.pinyin)
-        phoneticSymbol = '[' + jdata.pinyin + ']';
-
-    if (jdata.readPronun)
-        phoneticSymbol = phoneticSymbol + '[' + jdata.readPronun + ']';
-    
     var meanings = [];
     var count = 0;
     for (var meaningCount in jdata.mean) {
         ++count;
-        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + jdata.mean[meaningCount] + '</dicMean></br>';
-        
+        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + jdata.mean[meaningCount] + '</dicMean>' + brTag;
     }
-    
+
     if (meanings.length == 0)
         return null;
-
-    var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURIComponent(word);
-
-    return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
+    
+    return { word: jdata.word, phoneticSymbol: jdata.phoneticSymbol, soundUrl: jdata.soundUrl, meanings: meanings };
 }
-
 
 function parseChineseKorean(word, lang) {
     if ($("#dicRawData").text().indexOf("[") == -1)
@@ -404,7 +404,7 @@ function parseChineseKorean(word, lang) {
 
     for (var meaningCount in jdata.mean) {
 
-        meanings[meaningCount] = '<dicMean>' + jdata.mean[meaningCount] + '</dicMean></br>';
+        meanings[meaningCount] = '<dicMean>' + jdata.mean[meaningCount] + '</dicMean>' + brTag;
     }
     
     if (meanings.length == 0)
@@ -433,7 +433,7 @@ function parseHanjaKorean(word, lang) {
     var count = 0;
     for (var meaningCount in jdata.mean) {
         ++count;
-        meanings[meaningCount] = '<dicMean>' + jdata.mean[meaningCount] + '</dicMean></br>';
+        meanings[meaningCount] = '<dicMean>' + jdata.mean[meaningCount] + '</dicMean>' + brTag;
 
     }
 
@@ -569,7 +569,7 @@ function convertRawDataToJson(word, language, parser, data)
 
                 for (var i = 0; i < hunms.length; ++i)
                 {
-                    jsonData.mean.push(brLine);
+                    jsonData.mean.push(bridgeLine);
                     jsonData.mean.push('<dicWordClass>' + hanjas[i] + ' ' + '[' + hunms[i] + ']' + '</dicWordClass>');
                     jsonData.mean.push(meanings[i]);
                 }
@@ -582,6 +582,10 @@ function convertRawDataToJson(word, language, parser, data)
     else if (language == 'ja') {
         data = convertRawDataToJsonForNaverJapan(word, parser, data);
     }
+    else if (language == 'en') {
+        data = convertRawDataToJsonForNaverEnglish(word, parser, data);
+    }
+    
     $("#dicRawData").text(data);
 
     return parser(word, language);
@@ -616,11 +620,11 @@ function convertRawDataToJsonForDaumJapan(word, parser, data)
                 });
 
                 for (var i = 0; i < japans.length; ++i) {
-                    jsonData.mean.push(brLine);
+                    jsonData.mean.push(bridgeLine);
                     if (hanjas[i])
-                        jsonData.mean.push('<dicWordClass>' + japans[i] + ' ' + '[' + hanjas[i] + ']' + '</dicWordClass></br>');
+                        jsonData.mean.push('<dicWordClass>' + japans[i] + ' ' + '[' + hanjas[i] + ']' + '</dicWordClass>' + brTag);
                     else
-                        jsonData.mean.push('<dicWordClass>' + japans[i] + '</dicWordClass></br>');
+                        jsonData.mean.push('<dicWordClass>' + japans[i] + '</dicWordClass>' + brTag);
                     jsonData.mean.push(meanings[i]);
                 }
 
@@ -655,7 +659,7 @@ function convertRawDataToJsonForNaverChiness(word, parser, data) {
                 });
 
                 for (var i = 0; i < means.length; ++i)
-                    mean += '</br>' + means[i];
+                    mean += brTag + means[i];
 
                 meanings.push(mean);
             });
@@ -664,9 +668,9 @@ function convertRawDataToJsonForNaverChiness(word, parser, data) {
         for (var i = 0; i < natives.length; ++i)
         {
             jsonData.word = natives[0];
-            jsonData.mean.push(brLine);
-            jsonData.mean.push('<dicWordClass>' + natives[i] + '</dicWordClass></br>');
-            jsonData.mean.push(meanings[i] + '</br></br>');
+            jsonData.mean.push(bridgeLine);
+            jsonData.mean.push('<dicWordClass>' + natives[i] + '</dicWordClass>' + brTag);
+            jsonData.mean.push(meanings[i] + brTag + brTag);
         }
         
         data = JSON.stringify(jsonData);
@@ -701,12 +705,12 @@ function convertRawDataToJsonForNaverJapan(word, parser, data) {
 
                 for (var i = 0; i < subLable.length; ++i)
                 {
-                    mean += '</br>' + subLable[i] + ' ' +subMean[i];
+                    mean += brTag + subLable[i] + ' ' + subMean[i];
                 }
             
                 var i = 1;
                 $(this).find(".inner_lst").each(function () {
-                    mean += '</br>' + i + '.'+ $(this).text();
+                    mean += brTag + i + '.'+ $(this).text();
                     ++i;
                 });
                 meanings.push(mean);
@@ -715,9 +719,90 @@ function convertRawDataToJsonForNaverJapan(word, parser, data) {
         
         for (var i = 0; i < natives.length; ++i) {
             jsonData.word = natives[0];
-            jsonData.mean.push(brLine);
-            jsonData.mean.push('<dicWordClass>' + natives[i] + '</dicWordClass></br>');
-            jsonData.mean.push(meanings[i] + '</br></br>');
+            jsonData.mean.push(bridgeLine);
+            jsonData.mean.push('<dicWordClass>' + natives[i] + '</dicWordClass>' + brTag);
+            jsonData.mean.push(meanings[i] + brTag + brTag);
+        }
+
+        return JSON.stringify(jsonData);
+
+    }
+
+    return data;
+}
+
+function convertRawDataToJsonForNaverEnglish(word, parser, data) {
+    if (data.indexOf("<h3") >= 0) {
+
+        var jsonData = {};
+        
+        var startIndex = data.search("<h3>");
+        var endIndex = data.search("</h3>")+5;
+        var parsedData = data.substring(startIndex, endIndex);
+        
+        jsonData.mean = [];
+        try{
+            jsonData.word = $(parsedData).find(".t1:first").text();
+        }
+        catch(e)
+        {
+
+        }
+        
+        try
+        {
+            jsonData.soundUrl = $(parsedData).find("#pron_en").attr('playlist');
+        }
+        catch (e)
+        {
+
+        }
+        
+        try{
+            jsonData.phoneticSymbol = $(parsedData).find(".t2:first").text();
+        }
+        catch(e)
+        {
+
+        }
+
+        parsedData = "";
+        while (true)
+        {
+            startIndex = data.indexOf('<div class="box_a">', endIndex);
+            if (startIndex == -1)
+                break;
+
+            endIndex = data.indexOf('</div>', startIndex) + 6;
+
+            try {
+                $(data.substring(startIndex, endIndex));
+            }
+            catch (e)
+            {
+                continue;
+            }
+
+            parsedData += data.substring(startIndex, endIndex);
+            
+        }
+
+        var meanings = [];
+        $(parsedData).each(function () {
+
+            $(this).find(".first").each(function () {
+
+                var mean = "";
+                $(this).find(".fnt_k20").each(function () {
+                    mean += ' '  +$(this).text();
+                });
+                
+                meanings.push(mean);
+            });
+        });
+
+        for (var i = 0; i < meanings.length; ++i) {
+            jsonData.mean.push(meanings[i]);
         }
 
         return JSON.stringify(jsonData);
@@ -733,7 +818,7 @@ function translateSentence(word, lang, parser) {
     parser = parseGoogleTranslate;
     
     chrome.runtime.sendMessage({ url: url }, function (data) {
-
+        
         var parsedData = convertRawDataToJson(word, lang, parser, data);
         if (parsedData != null) {
             presentParsedDic(lang, parsedData);
@@ -847,7 +932,7 @@ function loadWordMeaningFromWeb(word) {
         
         loading = true;
         
-        chrome.runtime.sendMessage({ url: url}, function (data) {
+        chrome.runtime.sendMessage({ url: url }, function (data) {
             var parsedData = convertRawDataToJson(word, language, parser, data);
             if (parsedData != null) {
                 if (language == 'zh' || language == 'ja') {
@@ -925,14 +1010,13 @@ function presentParsedDic(language, parsedData) {
     }
     
     var htmlData = '<dicWord>' + parsedData.word + parsedData.phoneticSymbol + '</dicWord>' + '<dicWord>' + soundTag + eeTag + '</dicWord>' +
-                         '</br>' +
-                         '</br>';
+                         brTag + brTag;
 
     for (var meaningCount in parsedData.meanings) {
         htmlData += parsedData.meanings[meaningCount];
         
     }
-
+    
     var dicLayer = $("#dicLayer");
     $("#dicLayerContents").html(htmlData);
     dicLayer.scrollTop(0);
