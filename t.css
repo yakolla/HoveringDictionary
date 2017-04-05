@@ -73,17 +73,17 @@
     pointer-events:none;
 }
 
-#dicLayer dicWord {
+#dicLayer dicword {
      max-width: 300px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; display: inline-block;
 }
 
-#dicLayer dicWordClass {
+#dicLayer dicwordclass {
     font-weight: bold;
     font-style: italic;
     line-height:150%;
 }
 
-#dicLayer dicMean {
+#dicLayer dicmean {
     
     font-weight: bold;
     padding-left: 15px;
@@ -93,7 +93,7 @@
 
 
 
-#dicLayer dicCount {
+#dicLayer diccount {
     font-weight: bold !important;
     float: left;
     padding-right: 5px;
@@ -112,7 +112,7 @@
     display: inline-block;
 }
 
-#dicLayer dicBRLine {
+#dicLayer dicbridgeLine {
 	border-top: 1px solid;
     display: block;
 }

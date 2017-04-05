@@ -21,6 +21,8 @@ var arrowSize = 10;
 var bridgeLine = '<dicbridgeLine>';
 var brTag = '<br></br>';
 
+var domParser = new DOMParser();
+
 var userOptions = {};
 userOptions["tooltipDownDelayTime"] = 700;
 userOptions["enableEngKor"] = "true";
@@ -331,44 +333,6 @@ function parseEnglishEnglish(word, lang) {
     }
 }
 
-function parseKoreanEnglish2(word, lang) {
-    $(data).find("div.word_result").each(function () {
-
-    });
-    // naver 결과가 xhtml에 맞지 않는구나..
-    try {
-        document.getElementById("dicRawData").innerHTML = $("#dicRawData").text();
-    }
-    catch (err) {
-        $("#dicRawData").text($("#dicRawData").text() + '</div>');
-        $("#dicRawData").html($("#dicRawData").text());
-    }
-    
-    
-    $("#dicRawData .fnt_e11").remove();
-    // extract data
-    word = $("#dicRawData .t1:first").text();
-    var phoneticSymbol = $("#dicRawData .t2:first").text();
-
-    var soundUrl = $("#dicRawData #pron_en").attr('playlist');
-
-    var meanings = [];
-    var meaningCount = 0;
-    var count = 0;
-    $("#dicRawData dt[class!=last]").each(function () {
-        
-        ++count;
-        meanings[meaningCount] = '<dicCount>' + count + '.' + '</dicCount>' + '<dicMean>' + $(this).text() + '</dicMean>' + brTag;
-        
-        meaningCount++;
-
-    });
-
-    if (meanings.length == 0)
-        return null;
-    
-    return { word: word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
-}
 
 function parseKoreanEnglish(word, lang) {
     if ($("#dicRawData").text().indexOf("[") == -1)
@@ -731,75 +695,62 @@ function convertRawDataToJsonForNaverJapan(word, parser, data) {
     return data;
 }
 
-function convertRawDataToJsonForNaverEnglish(word, parser, data) {
-    if (data.indexOf("<h3") >= 0) {
+function findEndIndexOfTag(data, startIndex, tag)
+{
+    var startTag = '<' + tag;
+    var endTag = '</' + tag;
+    var stackCount = 0;
+    for (var i = startIndex; i < data.length; ++i)
+    {
+        var extractStr = data.substring(i, i + endTag.length);
+        if (0 <= extractStr.search(startTag)) {
+            i += startTag.length;
+            stackCount++;
+        }
+        else if (0 <= extractStr.search(endTag)) {
+            i += endTag.length;
+            stackCount--;
+        }
+        
+        if (stackCount == 0)
+            break
+    }
+    
+    
+    return i;
+}
 
+function convertRawDataToJsonForNaverEnglish(word, parser, data) {
+    if (data.indexOf("<html") >= 0) {
+        data = domParser.parseFromString(data, "text/html");
+        
         var jsonData = {};
         
-        var startIndex = data.search("<h3>");
-        var endIndex = data.search("</h3>")+5;
-        var parsedData = data.substring(startIndex, endIndex);
-        
         jsonData.mean = [];
-        try{
-            jsonData.word = $(parsedData).find(".t1:first").text();
-        }
-        catch(e)
-        {
-
-        }
         
-        try
-        {
-            jsonData.soundUrl = $(parsedData).find("#pron_en").attr('playlist');
-        }
-        catch (e)
-        {
-
-        }
+        jsonData.word = $(data).find(".word_num .first:first .fnt_e30").text();
+        if (jsonData.word == null || jsonData.word.length == 0)
+            jsonData.word = word;
+        jsonData.soundUrl = $(data).find(".word_num .first a[playlist]").attr('playlist');
+        jsonData.phoneticSymbol = $(data).find(".word_num .first:first .fnt_e25").text();
         
-        try{
-            jsonData.phoneticSymbol = $(parsedData).find(".t2:first").text();
-        }
-        catch(e)
-        {
-
-        }
-
-        parsedData = "";
-        while (true)
-        {
-            startIndex = data.indexOf('<div class="box_a">', endIndex);
-            if (startIndex == -1)
-                break;
-
-            endIndex = data.indexOf('</div>', startIndex) + 6;
-
-            try {
-                $(data.substring(startIndex, endIndex));
-            }
-            catch (e)
-            {
-                continue;
-            }
-
-            parsedData += data.substring(startIndex, endIndex);
-            
-        }
-
+        
+        
         var meanings = [];
-        $(parsedData).each(function () {
-
-            $(this).find(".first").each(function () {
-
-                var mean = "";
-                $(this).find(".fnt_k20").each(function () {
-                    mean += ' '  +$(this).text();
-                });
-                
-                meanings.push(mean);
-            });
+        
+        var mean = "";
+        var subLable = [];
+        var subMean = [];
+        $(data).find(".word_num dt .fnt_e30").each(function () {
+            subLable.push($(this).text().trim());
         });
+        $(data).find(".word_num dd").each(function () {
+            subMean.push($(this).find("p:first").text().trim());
+        });
+        
+        for (var i = 0; i < subLable.length; ++i) {
+            meanings.push(subLable[i] + brTag + subMean[i]);
+        }
 
         for (var i = 0; i < meanings.length; ++i) {
             jsonData.mean.push(meanings[i]);
@@ -811,6 +762,7 @@ function convertRawDataToJsonForNaverEnglish(word, parser, data) {
 
     return data;
 }
+
 
 function translateSentence(word, lang, parser) {
     var url = null;
@@ -895,7 +847,7 @@ function loadWordMeaningFromWeb(word) {
                 return;
             }
             
-            url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);
+            url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);            
             parser = parseKoreanEnglish;        
         }        
         else
@@ -916,7 +868,8 @@ function loadWordMeaningFromWeb(word) {
             }
             else
             {
-                url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);
+                //url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);
+                url = "http://endic.naver.com/search.nhn?sLn=kr&query=" + encodeURIComponent(word);
                 parser = parseKoreanEnglish;
             }
         }
@@ -979,7 +932,7 @@ function loadWordMeaningFromWeb(word) {
 
 function presentParsedDic(language, parsedData) {
 
-    var soundTag = '<div id="dicImg" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" />';
+    var soundTag = '<div id="dicImg" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" ></div>';
 
     if (parsedData.soundUrl == null)
         soundTag = "";
@@ -1004,9 +957,9 @@ function presentParsedDic(language, parsedData) {
     if (eeLableName != null)
     {
         if (eeCheckBox == true)
-            eeTag = '  <input type="checkbox" id="ee" checked />' + eeLableName;
+            eeTag = '  <input type="checkbox" id="ee" checked>' + eeLableName + '</>';
         else
-            eeTag = '  <input type="checkbox" id="ee" />' + eeLableName;
+            eeTag = '  <input type="checkbox" id="ee">' + eeLableName + '</>';
     }
     
     var htmlData = '<dicWord>' + parsedData.word + parsedData.phoneticSymbol + '</dicWord>' + '<dicWord>' + soundTag + eeTag + '</dicWord>' +
@@ -1017,8 +970,19 @@ function presentParsedDic(language, parsedData) {
         
     }
     
-    var dicLayer = $("#dicLayer");
-    $("#dicLayerContents").html(htmlData);
+    var dicLayer = $("#dicLayer");    
+    try{
+        $("#dicLayerContents").html(htmlData);
+    }
+    catch (e)
+    {
+        var doc = domParser.parseFromString(htmlData, 'text/html');
+        var result = new XMLSerializer().serializeToString(doc);
+        result = $(result).find('body').html();
+        result = result.replace(/xmlns/gi, "dicns");
+        $("#dicLayerContents").html(result);
+    }
+    
     dicLayer.scrollTop(0);
 
     if (parsedData.isSentence)
