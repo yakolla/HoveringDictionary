@@ -888,11 +888,11 @@ function loadWordMeaningFromWeb(word) {
         chrome.runtime.sendMessage({ url: url }, function (data) {
             var parsedData = convertRawDataToJson(word, language, parser, data);
             if (parsedData != null) {
-                if (language == 'zh' || language == 'ja') {
+                if (language == 'zh' || language == 'ja' || language == 'en') {
                     
                     var correctSearch = false;
                     for (var i = 0; i < parsedData.meanings.length; ++i) {
-                        if (0 <= parsedData.meanings[i].search(word)) {
+                        if (0 <= parsedData.meanings[i].search(new RegExp(word, "gi"))) {
                             
                             correctSearch = true;
                             break;
