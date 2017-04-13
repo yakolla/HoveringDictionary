@@ -450,8 +450,7 @@ function parseGoogleTranslate(word, lang) {
         if (meanings.length == 0)
             return null;
 
-        var sentence = encodeURIComponent(meanings[0]);
-        var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=" + lang + "&q=" + encodeURIComponent(word);
+        var soundUrl = "https://translate.googleapis.com/translate_tts?client=gtx&ie=UTF-8&tl=" + lang + "&q=" + encodeURIComponent(word).substring(0, 320);
     
         return { word: word, phoneticSymbol: "", soundUrl: soundUrl, meanings: meanings, isSentence:true };
     }
@@ -482,77 +481,79 @@ function convertRawDataToJson(word, language, parser, data)
     if (data == null)
         return null;
 
-    if (language == 'zh')
-    {
+    if (language == 'zh')    {
         data = convertRawDataToJsonForNaverChiness(word, parser, data);
     }
     else if (language == 'hanja') {
-        if (data.indexOf("<html") >= 0) {
-
-            var jsonData = {};
-            jsonData.word = $(data).find(".result_chn_chr:first  dl dt").text();
-            jsonData.pinyin = "";
-            
-            jsonData.readPronun = $(data).find(".result_chn_chr:first  .single dd .sound").text();
-            jsonData.mean = [];
-
-            if (jsonData.word.length > 1)
-            {
-                var sumWord = $(data).find(".result_chn_words:first dl dd a span:first").text();
-
-                if (sumWord.length > 0)
-                    jsonData.pinyin += '[' + sumWord + ']';
-
-                $(data).find(".result_chn_words:first .meaning:first").each(function () {
-                    jsonData.mean.push($(this).text());
-                });
-            }
-            else
-            {
-                $(data).find(".result_chn_chr:first dl dd a span").each(function () {
-                    jsonData.pinyin += '[' + $(this).text() + ']';
-                });
-            }
-
-            $(data).find(".result_chn_chr:first").each(function () {
-
-                var hanjas = [];
-                $(this).find("dl dt a").each(function () {
-                    hanjas.push($(this).text());
-                });
-
-                var hunms = [];
-                $(this).find("dd a span").each(function () {
-                    hunms.push($(this).text());
-                });
-
-                var meanings = [];
-                $(this).find(".meaning").each(function () {
-                    meanings.push($(this).text());
-                });
-
-                for (var i = 0; i < hunms.length; ++i)
-                {
-                    jsonData.mean.push(bridgeLine);
-                    jsonData.mean.push('<dicWordClass>' + hanjas[i] + ' ' + '[' + hunms[i] + ']' + '</dicWordClass>');
-                    jsonData.mean.push(meanings[i]);
-                }
-                
-            });
-
-            data = JSON.stringify(jsonData);
-        }
+        data = convertRawDataToJsonForNaverHanja(word, parser, data);
     }
     else if (language == 'ja') {
         data = convertRawDataToJsonForNaverJapan(word, parser, data);
     }
-    else if (language == 'en') {
+    else if (language == 'en' || language == 'ko') {
         data = convertRawDataToJsonForNaverEnglish(word, parser, data);
     }
     
     $("#dicRawData").text(data);
 
     return parser(word, language);
+}
+
+function convertRawDataToJsonForNaverHanja(word, parser, data) {
+    if (data.indexOf("<html") >= 0) {
+
+        var jsonData = {};
+        jsonData.word = $(data).find(".result_chn_chr:first  dl dt").text();
+        jsonData.pinyin = "";
+
+        jsonData.readPronun = $(data).find(".result_chn_chr:first  .single dd .sound").text();
+        jsonData.mean = [];
+
+        if (jsonData.word.length > 1) {
+            var sumWord = $(data).find(".result_chn_words:first dl dd a span:first").text();
+
+            if (sumWord.length > 0)
+                jsonData.pinyin += '[' + sumWord + ']';
+
+            $(data).find(".result_chn_words:first .meaning:first").each(function () {
+                jsonData.mean.push($(this).text());
+            });
+        }
+        else {
+            $(data).find(".result_chn_chr:first dl dd a span").each(function () {
+                jsonData.pinyin += '[' + $(this).text() + ']';
+            });
+        }
+
+        $(data).find(".result_chn_chr:first").each(function () {
+
+            var hanjas = [];
+            $(this).find("dl dt a").each(function () {
+                hanjas.push($(this).text());
+            });
+
+            var hunms = [];
+            $(this).find("dd a span").each(function () {
+                hunms.push($(this).text());
+            });
+
+            var meanings = [];
+            $(this).find(".meaning").each(function () {
+                meanings.push($(this).text());
+            });
+
+            for (var i = 0; i < hunms.length; ++i) {
+                jsonData.mean.push(bridgeLine);
+                jsonData.mean.push('<dicWordClass>' + hanjas[i] + ' ' + '[' + hunms[i] + ']' + '</dicWordClass>');
+                jsonData.mean.push(meanings[i]);
+            }
+
+        });
+
+        return JSON.stringify(jsonData);
+    }
+
+    return data;
 }
 
 function convertRawDataToJsonForDaumJapan(word, parser, data)
@@ -764,9 +765,9 @@ function convertRawDataToJsonForNaverEnglish(word, parser, data) {
 }
 
 
-function translateSentence(word, lang, parser) {
+function translateSentence(word, lang, toLang, parser) {
     var url = null;
-    url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + lang + "&tl=ko&hl=ko&dt=t&dt=bd&dj=1&source=icon&q=" + encodeURIComponent(word);
+    url = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=" + 'auto' + "&tl=" + toLang + "&hl=ko&dt=t&dt=bd&dj=1&source=icon&q=" + encodeURIComponent(word);
     parser = parseGoogleTranslate;
     
     chrome.runtime.sendMessage({ url: url }, function (data) {
@@ -796,13 +797,18 @@ function loadWordMeaningFromWeb(word) {
 
     guessLanguage.detect(word, function (language) {
         
+        if (language == 'unknown') {
+            if ( word.match(/[^a-zA-Z]/) == null ) {
+                language = 'en';
+            }
+        }
         // 중국어라 감지되었지만, 중국어 사전이 꺼지고, 일본어 사전이 켜진 경우에는 일본어로 감지시키자.
         if (language == 'zh') {
             if (userOptions["enableChineseKor"] == "false" && userOptions["enableJapaneseKor"] == "true")
                 language = 'ja';
         }
         var sentence = word;
-
+        
         if (language == 'zh') {
             if (userOptions["enableChineseKor"] == "false") {
                 $('#dicLayer').hide();
@@ -847,17 +853,17 @@ function loadWordMeaningFromWeb(word) {
                 return;
             }
             
-            url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);            
+            //url = "http://endic.naver.com/searchAssistDict.nhn?query=" + encodeURIComponent(word);            
+            url = "http://endic.naver.com/search.nhn?sLn=kr&query=" + encodeURIComponent(word);
             parser = parseKoreanEnglish;        
         }        
-        else
+        else if (language == 'en')
         {
             if (userOptions["enableEngKor"] == "false") {
                 $('#dicLayer').hide();
                 foundWord = null;
                 return;
             }
-            language = 'en';
             var regExp = /[0-9\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gim;
             
             word = word.replace(regExp, "");
@@ -887,43 +893,43 @@ function loadWordMeaningFromWeb(word) {
         
         chrome.runtime.sendMessage({ url: url }, function (data) {
             var parsedData = convertRawDataToJson(word, language, parser, data);
+            
             if (parsedData != null) {
-                if (language == 'zh' || language == 'ja' || language == 'en') {
                     
-                    var correctSearch = false;
-                    for (var i = 0; i < parsedData.meanings.length; ++i) {
-                        if (0 <= parsedData.meanings[i].search(new RegExp(word, "gi"))) {
+                var correctSearch = false;
+                for (var i = 0; i < parsedData.meanings.length; ++i) {
+                    if (0 <= parsedData.meanings[i].search(new RegExp(word, "gi"))) {
                             
-                            correctSearch = true;
-                            break;
-                        }
-                    }
-
-                    if (correctSearch == false) {
-                        translateSentence(sentence, language, parser);
-                        return;
+                        correctSearch = true;
+                        break;
                     }
                 }
-                
-                presentParsedDic(language, parsedData);
-                foundWord = word;
-                loading = false;
-                return;
-                
+
+                if (correctSearch == true) {
+                    presentParsedDic(language, parsedData);
+                    foundWord = word;
+                    loading = false;
+                    return;
+                }
             }
 
-            if (language == 'zh' || language == 'ja') {
-                translateSentence(sentence, language, parser);
+            
+            if (language == 'ko') {
+                translateSentence(sentence, language, 'en', parser);
             }
-            else {
+            else if (language == 'en') {            
 
                 if ((sentence.match(/ /g) || []).length > 0) {
-                    translateSentence(sentence, 'en', parser);
+                    translateSentence(sentence, language, 'ko', parser);
                 }
-                else {                        
+                else {
                     loading = false;
                     foundWord = null;
                 }
+            }
+            else
+            {
+                translateSentence(sentence, language, 'ko', parser);
             }
         });
        
