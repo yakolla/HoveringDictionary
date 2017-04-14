@@ -445,6 +445,12 @@ function parseGoogleTranslate(word, lang) {
             meanings[0] = "";
             for (var i = 0; i < jdata.sentences.length; ++i)
                 meanings[0] += jdata.sentences[i].trans;
+
+            
+        }
+
+        if (jdata.src) {
+            lang = jdata.src;
         }
 
         if (meanings.length == 0)
@@ -798,7 +804,7 @@ function loadWordMeaningFromWeb(word) {
     guessLanguage.detect(word, function (language) {
         
         if (language == 'unknown') {
-            if ( word.match(/[^a-zA-Z]/) == null ) {
+            if ((word.match(/[0-9a-zA-Z.;\-]/) || []).length > 0) {
                 language = 'en';
             }
         }
@@ -864,9 +870,10 @@ function loadWordMeaningFromWeb(word) {
                 foundWord = null;
                 return;
             }
-            var regExp = /[0-9\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gim;
-            
+
+            var regExp = /[0-9\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gim;            
             word = word.replace(regExp, "");
+
             if (userOptions["enableEE"] == true)
             {
                 url = "http://restapi.dictionary.com/v2/word.json/" + encodeURIComponent(word) + "/complete?api_key=sWq3tLz8ifndaTK&platform=Chrome&app_id=chromeExtension_1.1&clickSource=Popup";
@@ -912,23 +919,23 @@ function loadWordMeaningFromWeb(word) {
                     return;
                 }
             }
-
             
             if (language == 'ko') {
                 translateSentence(sentence, language, 'en', parser);
             }
             else if (language == 'en') {            
 
-                if ((sentence.match(/ /g) || []).length > 0) {
+                var spaceCount = (sentence.match(/ /g) || []).length;
+                if (spaceCount > 0 && sentence.length != spaceCount) {
                     translateSentence(sentence, language, 'ko', parser);
                 }
                 else {
                     loading = false;
-                    foundWord = null;
+                    foundWord = word;
                 }
             }
             else
-            {
+            {                
                 translateSentence(sentence, language, 'ko', parser);
             }
         });
