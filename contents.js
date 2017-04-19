@@ -380,11 +380,13 @@ function parseChineseKorean(word, lang) {
 }
 
 function parseHanjaKorean(word, lang) {
+
+    
     if ($("#dicRawData").text().indexOf("[") == -1)
         return null;
 
     var jdata = JSON.parse($("#dicRawData").text());
-        
+    
     // extract data
     var phoneticSymbol = '';
     if (jdata.pinyin)
@@ -403,7 +405,6 @@ function parseHanjaKorean(word, lang) {
 
     if (meanings.length == 0)
         return null;
-    
     var soundUrl = "http://tts.cndic.naver.com/tts/mp3ttsV1.cgi?url=cndic.naver.com&spk_id=250&text_fmt=0&pitch=100&volume=100&speed=100&wrapper=0&enc=0&text=" + encodeURIComponent(word);
 
     return { word: jdata.word, phoneticSymbol: phoneticSymbol, soundUrl: soundUrl, meanings: meanings };
@@ -515,23 +516,34 @@ function convertRawDataToJsonForNaverHanja(word, parser, data) {
         jsonData.readPronun = $(data).find(".result_chn_chr:first  .single dd .sound").text();
         jsonData.mean = [];
 
-        if (jsonData.word.length > 1) {
-            var sumWord = $(data).find(".result_chn_words:first dl dd a span:first").text();
+        
 
-            if (sumWord.length > 0)
-                jsonData.pinyin += '[' + sumWord + ']';
+        $(data).find(".result_chn_words").each(function () {
 
-            $(data).find(".result_chn_words:first .meaning:first").each(function () {
-                jsonData.mean.push($(this).text());
+            var hanjas = [];
+            $(this).find("dl dt a").each(function () {
+                hanjas.push($(this).text());
             });
-        }
-        else {
-            $(data).find(".result_chn_chr:first dl dd a span").each(function () {
-                jsonData.pinyin += '[' + $(this).text() + ']';
-            });
-        }
 
-        $(data).find(".result_chn_chr:first").each(function () {
+            var hunms = [];
+            $(this).find("dd a span").each(function () {
+                hunms.push($(this).text());
+            });
+
+            var meanings = [];
+            $(this).find(".meaning").each(function () {
+                meanings.push($(this).text());
+            });
+
+            for (var i = 0; i < hunms.length; ++i) {
+                jsonData.mean.push(bridgeLine);
+                jsonData.mean.push('<dicWordClass>' + hanjas[i] + ' ' + '[' + hunms[i] + ']' + '</dicWordClass>');
+                jsonData.mean.push(meanings[i]);
+            }
+
+        });
+
+        $(data).find(".result_chn_chr").each(function () {
 
             var hanjas = [];
             $(this).find("dl dt a").each(function () {
@@ -641,7 +653,7 @@ function convertRawDataToJsonForNaverChiness(word, parser, data) {
             jsonData.word = natives[0];
             jsonData.mean.push(bridgeLine);
             jsonData.mean.push('<dicWordClass>' + natives[i] + '</dicWordClass>' + brTag);
-            jsonData.mean.push(meanings[i] + brTag + brTag);
+            jsonData.mean.push(meanings[i]);
         }
         
         data = JSON.stringify(jsonData);
@@ -900,17 +912,26 @@ function loadWordMeaningFromWeb(word) {
         
         chrome.runtime.sendMessage({ url: url }, function (data) {
             var parsedData = convertRawDataToJson(word, language, parser, data);
+
             
             if (parsedData != null) {
                     
                 var correctSearch = false;
-                for (var i = 0; i < parsedData.meanings.length; ++i) {
-                    if (0 <= parsedData.meanings[i].search(new RegExp(word, "gi"))) {
-                            
+                if (language == 'hanja')
+                {
+                    if (parsedData.meanings.length > 0)
                         correctSearch = true;
-                        break;
-                    }
                 }
+                else
+                {
+                    for (var i = 0; i < parsedData.meanings.length; ++i) {
+                        if (0 <= parsedData.meanings[i].search(new RegExp(word, "gi"))) {
+
+                            correctSearch = true;
+                            break;
+                        }
+                    }
+                }                
 
                 if (correctSearch == true) {
                     presentParsedDic(language, parsedData);
@@ -1257,7 +1278,7 @@ $(document).ready(function () {
     if (debug == true)
         createLogDiv();
 
-    loadOptions();   
+    loadOptions();
 
     $(document).keyup(function (e) {
         //~
@@ -1299,5 +1320,21 @@ $(document).ready(function () {
         }
         return true;
     });
+
+    document.addEventListener("contextmenu", releaseMouse);
+    document.addEventListener("selectstart", releaseMouse);
+    //document.addEventListener("beforecopy", releaseMouse);
+    //document.addEventListener("beforecut", releaseMouse);
+    //document.addEventListener("copy", releaseMouse);
+    //document.addEventListener("dragstart", releaseMouse);
+    //document.addEventListener("dragend", releaseMouse);
 });
+
+function releaseMouse(e)
+{
+    e.preventDefault();
+    e.stopPropagation();
+    e.returnValue = true
+}
+
 
