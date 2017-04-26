@@ -43,6 +43,7 @@ userOptions["popupKey"] = "0";
 userOptions["popupOrientation"] = "0";
 userOptions["enableEE"] = false;
 userOptions["enableHanja"] = false;
+userOptions["enableDrag"] = false;
 
 
 function getWordUnderCursor(event) {
@@ -1257,7 +1258,8 @@ function loadOptions() {
                     , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"
                     , "enablePronunciation"
                    , "enableTranslate"
-                    , "popupKey", "popupOrientation", "enableEE", "enableHanja"];  // 불러올 항목들의 이름
+                    , "popupKey", "popupOrientation", "enableEE", "enableHanja"
+                    , "enableDrag"];  // 불러올 항목들의 이름
 
 
     chrome.storage.local.get(keys, function (options) {
@@ -1275,6 +1277,20 @@ function loadOptions() {
         
         setInterval(function () { showWordToolTip() }, options['tooltipUpDelayTime']);
         setInterval(function () { hideWordToolTip() }, options['tooltipDownDelayTime']);
+
+        if (userOptions["enableDrag"] == "true") {
+            //var tags = ["contextmenu", "beforecopy", "beforecut", "copy", "selectstart", "dragstart", "dragend", "keydown", "keyup", "mousedown", "mouseup"];
+            var tags = ["contextmenu", "selectstart"];
+
+            for (tag in tags) {
+                document.body.addEventListener(tags[tag], releaseMouse, capture);
+            }
+
+            $('body').find('*').each(function () {
+                $(this).css('-webkit-user-select', 'text');
+                $(this).css('user-select', 'text');
+            });
+        }
     });
 }
 
@@ -1329,17 +1345,7 @@ $(document).ready(function () {
         return true;
     });
 
-    //var tags = ["contextmenu", "beforecopy", "beforecut", "copy", "selectstart", "dragstart", "dragend", "keydown", "keyup", "mousedown", "mouseup"];
-    var tags = ["contextmenu", "selectstart"];
-
-    for (tag in tags) {
-        document.body.addEventListener(tags[tag], releaseMouse, capture);
-    }
     
-    $('body').find('*').each(function () {
-        $(this).css('-webkit-user-select', 'text');
-        $(this).css('user-select', 'text');
-    });
 
 });
 

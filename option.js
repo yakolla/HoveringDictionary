@@ -22,6 +22,7 @@ function save_options() {
 
     options["enablePronunciation"] = document.getElementById("enablePronunciation").value;
     options["enableTranslate"] = document.getElementById("enableTranslate").value;
+    options["enableDrag"] = document.getElementById("enableDrag").value;
     
     chrome.storage.local.set(options, function () {
        
@@ -49,7 +50,7 @@ function restore_defaults(orage) {
 
     document.getElementById("enablePronunciation").value = "false";
     document.getElementById("enableTranslate").value = "true";
-    
+    document.getElementById("enableDrag").value = "false";
 }
 
 function restore_options() {
@@ -59,7 +60,7 @@ function restore_options() {
                     , "backColor2", "tooltipUpDelayTime", "tooltipDownDelayTime"
                     , "enableEngKor", "enableKorEng", "enableJapaneseKor", "enableChineseKor"
                     , "enablePronunciation", "enableTranslate", "popupKey", "popupOrientation"
-                    ];  // 불러올 항목들의 이름
+                    , "enableDrag"];  // 불러올 항목들의 이름
 
     chrome.storage.local.get(keys, function (options) {
         
@@ -88,7 +89,7 @@ function restore_options() {
 
         document.getElementById("enablePronunciation").value = options["enablePronunciation"];
         document.getElementById("enableTranslate").value = options["enableTranslate"];
-        
+        document.getElementById("enableDrag").value = options["enableDrag"];
     });
 }
 
