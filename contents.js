@@ -975,7 +975,7 @@ function loadWordMeaningFromWeb(word) {
 
 function presentParsedDic(language, parsedData) {
 
-    var soundTag = '<div id="dicImg" style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" ></div>';
+    var soundTag = '<dicimg style="background-image: url(' + chrome.extension.getURL('play.gif') + ');" ></dicimg>';
 
     if (parsedData.soundUrl == null)
         soundTag = "";
@@ -1000,9 +1000,9 @@ function presentParsedDic(language, parsedData) {
     if (eeLableName != null)
     {
         if (eeCheckBox == true)
-            eeTag = '  <input type="checkbox" id="ee" checked>' + eeLableName + '</>';
+            eeTag = '  <input type="checkbox" id="ee" checked>' + eeLableName + '</input>';
         else
-            eeTag = '  <input type="checkbox" id="ee">' + eeLableName + '</>';
+            eeTag = '  <input type="checkbox" id="ee">' + eeLableName + '</input>';
     }
     
     var htmlData = dicWordTagBegin + parsedData.word + parsedData.phoneticSymbol + dicWordTagEnd + dicWordTagBegin + soundTag + eeTag + dicWordTagEnd +
@@ -1039,7 +1039,7 @@ function presentParsedDic(language, parsedData) {
             chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
     }
 
-    $("#dicLayer #dicImg").click(function () {
+    $("#dicLayer dicimg").click(function () {
         chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
     });
     

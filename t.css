@@ -74,7 +74,11 @@
 }
 
 #dicLayer dicword {
-     max-width: 300px; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; display: inline-block;
+     max-width: 300px; 
+     text-overflow: ellipsis; 
+     overflow: hidden; 
+     white-space: nowrap; 
+     display: inline-block;
 }
 
 #dicLayer dicwordclass {
@@ -88,16 +92,29 @@
     font-weight: bold;
     padding-left: 15px;
     display: block;
-    
 }
 
 
+#dicLayer input {
+    width:19px;
+    height:18px;
+    display: inline-block;
+    margin-bottom:0px;
+}
+
+#dicLayer dicimg {
+    width:19px;
+    height:18px;
+    display: inline-block;
+    margin-bottom:0px;
+}
 
 #dicLayer diccount {
     font-weight: bold !important;
     float: left;
     padding-right: 5px;
     display: block;
+    margin-bottom:0px;
 }
 
 #dicLayer .dbus_example {
@@ -106,11 +123,7 @@
     display: block;
 }
 
-#dicImg {
-    width:19px;
-    height:18px;
-    display: inline-block;
-}
+
 
 #dicLayer dicbridgeLine {
 	border-top: 1px solid;
