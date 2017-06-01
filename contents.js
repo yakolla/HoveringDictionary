@@ -1,22 +1,25 @@
-﻿var debug = false;
-var wordForDebug = null;
-var debugString = null;
-var forceShowToolTip = false;
-var foundWord = null;
+﻿var g_debug = false;
+var g_wordForDebug = null;
+var g_debugString = null;
+var g_forceShowToolTip = false;
+var g_foundWord = null;
 
-var mouseEvent;
-var mouseX = 0, mouseY = 0, mouseTarget = null, mousePageX = 0, mousePageY = 0, mousePressed = 0, rMouseX = 0, rMouseY = 0;
-var pageHeight = 0, pageWidth = 0;
-var pressKey = 0;
-var loading = false;
-var focusIframe = null;
-var contextSelectionWord = null;
-var maxSentenceLen = 90;
+var g_mouseEvent;
+var g_mouseX = 0, g_mouseY = 0, g_mouseTarget = null, g_mousePageX = 0, g_mousePageY = 0, g_mousePressed = 0, g_rMouseX = 0, g_rMouseY = 0, g_oldMouseX = 0, g_oldMouseY = 0;
+var g_pageHeight = 0, g_pageWidth = 0;
+var g_pressKey = 0;
+var g_loading = false;
+var g_focusIframe = null;
+var g_contextSelectionWord = null;
+var g_mouseHoverElapsedTime = 0;
 
-var startTootipTime = 0;
-var maxMeaning = 3;
+// const
+var MaxSentenceLen = 90;
+var ArrowSize = 10;
 
-var arrowSize = 10;
+var g_startTootipTime = 0;
+
+
 //var bridgeLine = '<hr noshade>';
 var bridgeLine = '<dicbridgeLine>';
 var brTag = '<br></br>';
@@ -29,28 +32,29 @@ var dicWordClassTagEnd = '</dicwordclass>';
 var dicCountTagBegin = '<diccount style="user-select: text;">';
 var dicCountTagEnd = '</diccount>';
 
-var domParser = new DOMParser();
+var g_domParser = new DOMParser();
 
-var userOptions = {};
-userOptions["tooltipDownDelayTime"] = 700;
-userOptions["enableEngKor"] = "true";
-userOptions["enableKorEng"] = "false";
-userOptions["enableJapaneseKor"] = "true";
-userOptions["enableChineseKor"] = "true";
-userOptions["enablePronunciation"] = "false";
-userOptions["enableTranslate"] = "true";
-userOptions["popupKey"] = "0";
-userOptions["popupOrientation"] = "0";
-userOptions["enableEE"] = false;
-userOptions["enableHanja"] = false;
-userOptions["enableDrag"] = false;
+var g_userOptions = {};
+g_userOptions["tooltipDownDelayTime"] = 700;
+g_userOptions["tooltipUpDelayTime"] = 300;
+g_userOptions["enableEngKor"] = "true";
+g_userOptions["enableKorEng"] = "false";
+g_userOptions["enableJapaneseKor"] = "true";
+g_userOptions["enableChineseKor"] = "true";
+g_userOptions["enablePronunciation"] = "false";
+g_userOptions["enableTranslate"] = "true";
+g_userOptions["popupKey"] = "0";
+g_userOptions["popupOrientation"] = "0";
+g_userOptions["enableEE"] = false;
+g_userOptions["enableHanja"] = false;
+g_userOptions["enableDrag"] = false;
 
 
-function getWordUnderCursor(event) {
+function getWordUnderCursor(clientX, clientY) {
     var range, textNode, offset;
 
     if (document.caretRangeFromPoint) {     // Chrome
-        range = document.caretRangeFromPoint(event.clientX, event.clientY);
+        range = document.caretRangeFromPoint(clientX, clientY);
         if (range == null)
             return null;
 
@@ -84,8 +88,8 @@ function getWordUnderCursor(event) {
     range.setEnd(textNode, end);
 
     var rect = range.getBoundingClientRect();    
-    if (rect.left > event.clientX || rect.right < event.clientX ||
-               rect.top > event.clientY || rect.bottom < event.clientY) {
+    if (rect.left > clientX || rect.right < clientX ||
+               rect.top > clientY || rect.bottom < clientY) {
 
         return null;
     }
@@ -93,52 +97,9 @@ function getWordUnderCursor(event) {
     return resultString;
 }
 
-function getCharacterAtPoint(elem, x, y) {
-    if (elem == null)
-        return null;
-
-    if (elem.nodeType == elem.TEXT_NODE) {
-
-        var range = elem.ownerDocument.createRange();
-
-        range.selectNodeContents(elem);
-        var currentPos = 0;
-        var endPos = range.endOffset;
-        while (currentPos < endPos)
-        {
-            range.setStart(elem, currentPos);
-            range.setEnd(elem, currentPos + 1);
-            
-            var rect = range.getBoundingClientRect();
-
-            if (rect.left <= x && rect.right >= x &&
-               rect.top <= y && rect.bottom >= y) {
-                var ret = range.toString();
-                //debugString = ret;
-                return (ret);
-            }
-            currentPos += 1;
-        }
-    } else {
-        for (var i = 0; i < elem.childNodes.length; i++) {
-            var range = elem.childNodes[i].ownerDocument.createRange();
-            range.selectNodeContents(elem.childNodes[i]);
-            var rect = range.getBoundingClientRect();
-            if (rect.left <= x && rect.right >= x &&
-               rect.top <= y && rect.bottom >= y) {
-                //range.detach();
-                return (getCharacterAtPoint(elem.childNodes[i], x, y));
-            } else {
-                //range.detach();
-            }
-        }
-    }
-    return (null);
-}
-
 function getSelectedWord() {
-    if (focusIframe) {
-        var word = getSelectedTextFromIFrame(focusIframe);
+    if (g_focusIframe) {
+        var word = getSelectedTextFromIFrame(g_focusIframe);
         if (word != null) {
            return word;
         }
@@ -183,7 +144,7 @@ function getSelectedTextFromIFrame(frame) {
 }
 
 function isInSelectedTextArea(x, y) {
-    if (mousePressed != 0)
+    if (g_mousePressed != 0)
         return false;
 
     var s = getSelectedWord();
@@ -204,19 +165,19 @@ function isInSelectedTextArea(x, y) {
 
 
 function onMouseMove(e) {
-    mouseX = e.clientX,
-    mouseY = e.clientY;
+    g_mouseX = e.clientX,
+    g_mouseY = e.clientY;
     
-    mousePressed = e.which;
-    mouseTarget = e.target;
-    mouseEvent = e;
+    g_mousePressed = e.which;
+    g_mouseTarget = e.target;
+    g_mouseEvent = e;
 
-    pageHeight = mouseTarget.ownerDocument.documentElement.clientHeight;
-    pageWidth= mouseTarget.ownerDocument.documentElement.clientWidth;
+    g_pageHeight = g_mouseTarget.ownerDocument.documentElement.clientHeight;
+    g_pageWidth= g_mouseTarget.ownerDocument.documentElement.clientWidth;
 
-    if (mousePressed > 0 || e.button > 0) {
-        if (InDicLayer(mouseTarget) == false) {
-            mouseTarget = null;
+    if (g_mousePressed > 0 || e.button > 0) {
+        if (InDicLayer(g_mouseTarget) == false) {
+            g_mouseTarget = null;
             $('#dicLayer').hide();
         }
     }    
@@ -224,14 +185,14 @@ function onMouseMove(e) {
     var toolbarHeight = window.outerHeight - window.innerHeight;
     var toolbarWidth = window.outerWidth - window.innerWidth;
 
-    //mousePageX = (e.screenX - window.screenX) / (window.outerWidth) * 100;
-    //mousePageY = (e.screenY - window.screenY) / (window.outerHeight) * 100;
+    //g_mousePageX = (e.screenX - window.screenX) / (window.outerWidth) * 100;
+    //g_mousePageY = (e.screenY - window.screenY) / (window.outerHeight) * 100;
 
-    mousePageX = (mouseX) / (pageWidth) * 100;
-    mousePageY = (mouseY) / (pageHeight) * 100;
+    g_mousePageX = (g_mouseX) / (g_pageWidth) * 100;
+    g_mousePageY = (g_mouseY) / (g_pageHeight) * 100;
     
-    if (debug == true) {
-        $('#ylog').html('<p>x:' + parseInt(mousePageX) + ', y:' + parseInt(mousePageY) + ', word:' + wordForDebug + ', debugString:' + debugString);
+    if (g_debug == true) {
+        $('#ylog').html('<p>x:' + parseInt(g_mousePageX) + ', y:' + parseInt(g_mousePageY) + ', word:' + g_wordForDebug + ', debugString:' + g_debugString);
     }
 }
 
@@ -479,9 +440,9 @@ chrome.runtime.onMessage.addListener(onMessageProc);
 
 function onMessageProc(request, sender, sendResponse) {
     if (request.id == 1) {
-        contextSelectionWord = request.greeting;
+        g_contextSelectionWord = request.greeting;
 
-        showWordToolTipCore(rMouseX, rMouseY, request.greeting, 1000);
+        showWordToolTipCore(g_rMouseX, g_rMouseY, request.greeting, 1000);
     }
     else if (request.id == 2) {
         var e = jQuery.Event("keyup");
@@ -750,7 +711,7 @@ function findEndIndexOfTag(data, startIndex, tag)
 
 function convertRawDataToJsonForNaverEnglish(word, parser, data) {
     if (data.indexOf("<html") >= 0) {
-        data = domParser.parseFromString(data, "text/html");
+        data = g_domParser.parseFromString(data, "text/html");
         
         var jsonData = {};
         
@@ -802,13 +763,13 @@ function translateSentence(word, lang, toLang, parser) {
         var parsedData = convertRawDataToJson(word, lang, parser, data);
         if (parsedData != null) {
             presentParsedDic(lang, parsedData);
-            foundWord = word;
+            g_foundWord = word;
         }
         else
         {
-            foundWord = null;
+            g_foundWord = null;
         }
-        loading = false;
+        g_loading = false;
     });
 }
 
@@ -816,7 +777,7 @@ function translateSentence(word, lang, toLang, parser) {
 
 function loadWordMeaningFromWeb(word) {
 
-    if (loading == true)
+    if (g_loading == true)
         return;
 
     var url = "";
@@ -831,22 +792,22 @@ function loadWordMeaningFromWeb(word) {
         }
         // 중국어라 감지되었지만, 중국어 사전이 꺼지고, 일본어 사전이 켜진 경우에는 일본어로 감지시키자.
         if (language == 'zh') {
-            if (userOptions["enableChineseKor"] == "false" && userOptions["enableJapaneseKor"] == "true")
+            if (g_userOptions["enableChineseKor"] == "false" && g_userOptions["enableJapaneseKor"] == "true")
                 language = 'ja';
         }
         var sentence = word;
         
         if (language == 'zh') {
-            if (userOptions["enableChineseKor"] == "false") {
+            if (g_userOptions["enableChineseKor"] == "false") {
                 $('#dicLayer').hide();
-                foundWord = null;
+                g_foundWord = null;
                 return;
             }
 
             var regExp = /[\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gi;
             word = word.replace(regExp, "");
 
-            if (userOptions["enableHanja"] == true) {
+            if (g_userOptions["enableHanja"] == true) {
                 language = 'hanja';
                 url = "http://hanja.naver.com/search?query=" + encodeURIComponent(word);
                 parser = parseHanjaKorean;
@@ -858,9 +819,9 @@ function loadWordMeaningFromWeb(word) {
             }
         }
         else if (language == 'ja') {
-            if (userOptions["enableJapaneseKor"] == "false") {
+            if (g_userOptions["enableJapaneseKor"] == "false") {
                 $('#dicLayer').hide();
-                foundWord = null;
+                g_foundWord = null;
                 return;
             }
 
@@ -874,9 +835,9 @@ function loadWordMeaningFromWeb(word) {
             
         }
         else if (language == 'ko') {
-            if (userOptions["enableKorEng"] == "false") {
+            if (g_userOptions["enableKorEng"] == "false") {
                 $('#dicLayer').hide();
-                foundWord = null;
+                g_foundWord = null;
                 return;
             }
             
@@ -886,16 +847,16 @@ function loadWordMeaningFromWeb(word) {
         }        
         else if (language == 'en')
         {
-            if (userOptions["enableEngKor"] == "false") {
+            if (g_userOptions["enableEngKor"] == "false") {
                 $('#dicLayer').hide();
-                foundWord = null;
+                g_foundWord = null;
                 return;
             }
 
             var regExp = /[0-9\{\}\[\]\/?.,;:|\)*~`!^\-_+<>@\#$%&\\\=\(\'\"]/gim;            
             word = word.replace(regExp, "");
 
-            if (userOptions["enableEE"] == true)
+            if (g_userOptions["enableEE"] == true)
             {
                 url = "http://restapi.dictionary.com/v2/word.json/" + encodeURIComponent(word) + "/complete?api_key=sWq3tLz8ifndaTK&platform=Chrome&app_id=chromeExtension_1.1&clickSource=Popup";
                 parser = parseEnglishEnglish;
@@ -909,15 +870,15 @@ function loadWordMeaningFromWeb(word) {
         }
 
         if (language == 'zh' || language == 'ja') {
-            if (sentence.length > maxSentenceLen) {
-                sentence = sentence.substring(0, maxSentenceLen - 1);
+            if (sentence.length > MaxSentenceLen) {
+                sentence = sentence.substring(0, MaxSentenceLen - 1);
             }
         }
         
-        if (word == null || word.length == 0 || foundWord == word || foundWord == sentence)
-            return null;
+        if (word == null || word.length == 0 || g_foundWord == word || g_foundWord == sentence)
+            return;
         
-        loading = true;
+        g_loading = true;
         
         chrome.runtime.sendMessage({ url: url }, function (data) {
             var parsedData = convertRawDataToJson(word, language, parser, data);
@@ -944,15 +905,20 @@ function loadWordMeaningFromWeb(word) {
 
                 if (correctSearch == true) {
                     presentParsedDic(language, parsedData);
-                    foundWord = word;
-                    loading = false;
+                    g_foundWord = word;
+                    g_loading = false;
                     return;
                 }
             }
-            
+
             if (language == 'ko') {
                 translateSentence(sentence, language, 'en', parser);
             }
+            else
+            {
+                translateSentence(sentence, language, 'ko', parser);
+            }
+            /*
             else if (language == 'en') {            
 
                 var spaceCount = (sentence.match(/ /g) || []).length;
@@ -960,14 +926,14 @@ function loadWordMeaningFromWeb(word) {
                     translateSentence(sentence, language, 'ko', parser);
                 }
                 else {
-                    loading = false;
-                    foundWord = word;
+                    g_loading = false;
+                    g_foundWord = word;
                 }
             }
             else
-            {                
+            {   
                 translateSentence(sentence, language, 'ko', parser);
-            }
+            }*/
         });
        
     });
@@ -987,13 +953,13 @@ function presentParsedDic(language, parsedData) {
     if (language == "en") {
         eeOptionName = "enableEE";
         eeLableName = "Eng";
-        if (userOptions[eeOptionName] == true)
+        if (g_userOptions[eeOptionName] == true)
             eeCheckBox = true;        
     }
     else if (language == "zh" || language == "hanja") {
         eeOptionName = "enableHanja";
         eeLableName = "Hanja";
-        if (userOptions[eeOptionName] == true)
+        if (g_userOptions[eeOptionName] == true)
             eeCheckBox = true;
     }
     
@@ -1019,7 +985,7 @@ function presentParsedDic(language, parsedData) {
     }
     catch (e)
     {
-        var doc = domParser.parseFromString(htmlData, 'text/html');
+        var doc = g_domParser.parseFromString(htmlData, 'text/html');
         var result = new XMLSerializer().serializeToString(doc);
         result = $(result).find('body').html();
         result = result.replace(/xmlns/gi, "dicns");
@@ -1030,12 +996,12 @@ function presentParsedDic(language, parsedData) {
 
     if (parsedData.isSentence)
     {
-        if (userOptions["enablePronunciation"] == "true")
+        if (g_userOptions["enablePronunciation"] == "true")
             chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
     }
     else
     {
-        if (userOptions["enablePronunciation"] == "true" || userOptions["enablePronunciation"] == "onlyWord")
+        if (g_userOptions["enablePronunciation"] == "true" || g_userOptions["enablePronunciation"] == "onlyWord")
             chrome.runtime.sendMessage({ soundUrl: parsedData.soundUrl }, function (data) { });
     }
 
@@ -1044,15 +1010,15 @@ function presentParsedDic(language, parsedData) {
     });
     
     $("#dicLayer #ee").click(function () {
-        userOptions[eeOptionName] = $(this).is(":checked");
+        g_userOptions[eeOptionName] = $(this).is(":checked");
             
         if (language == "en") {
-            chrome.storage.local.set({ "enableEE": userOptions[eeOptionName] }, function () {
+            chrome.storage.local.set({ "enableEE": g_userOptions[eeOptionName] }, function () {
 
             });
         }
         else if (language == "zh" || language == "hanja") {
-            chrome.storage.local.set({ "enableHanja": userOptions[eeOptionName] }, function () {
+            chrome.storage.local.set({ "enableHanja": g_userOptions[eeOptionName] }, function () {
 
             });
         }
@@ -1062,25 +1028,25 @@ function presentParsedDic(language, parsedData) {
     });
 
     var topArrow = true;
-    var x = mouseX;
-    var y = mouseY;
+    var x = g_mouseX;
+    var y = g_mouseY;
     var gabHeight = 20;
     var arrowYPos = y;
 
-    if (pageWidth < dicLayer.width() + x) {
-        x = pageWidth - dicLayer.width();
+    if (g_pageWidth < dicLayer.width() + x) {
+        x = g_pageWidth - dicLayer.width();
     }
     
-    if (userOptions["popupOrientation"] == "1" || pageHeight < dicLayer.height() + y + gabHeight) {
-        //y = pageHeight - dicLayer.height() - gabHeight;
-        y = mouseY - dicLayer.height() - gabHeight - arrowSize * 3;
-        arrowYPos = y + dicLayer.height() + gabHeight + arrowSize / 2 + 1;
+    if (g_userOptions["popupOrientation"] == "1" || g_pageHeight < dicLayer.height() + y + gabHeight) {
+        //y = g_pageHeight - dicLayer.height() - gabHeight;
+        y = g_mouseY - dicLayer.height() - gabHeight - ArrowSize * 3;
+        arrowYPos = y + dicLayer.height() + gabHeight + ArrowSize / 2 + 1;
         topArrow = false;
     }
 
     if (y < 0)
     {
-        y = mouseY
+        y = g_mouseY
         arrowYPos = y;
         topArrow = true;
     }
@@ -1093,8 +1059,8 @@ function presentParsedDic(language, parsedData) {
     var dicLayerArrowF = $("#dicLayerArrowF");
 
     
-    dicLayerArrowB.css("left", (x + arrowSize/2) + 'px');
-    dicLayerArrowF.css("left", (x + arrowSize) + 'px');
+    dicLayerArrowB.css("left", (x + ArrowSize/2) + 'px');
+    dicLayerArrowF.css("left", (x + ArrowSize) + 'px');
 
     dicLayerArrowB.css("border-bottom-color", '');
     dicLayerArrowB.css("border-top-color", '');
@@ -1105,18 +1071,18 @@ function presentParsedDic(language, parsedData) {
     {        
         dicLayerArrowB.css("top", (arrowYPos + 1) + 'px');
         dicLayerArrowF.css("top", (arrowYPos + 2) + 'px');
-        dicLayerArrowF.css("border-bottom-color", '#' + userOptions['backColor1']);
+        dicLayerArrowF.css("border-bottom-color", '#' + g_userOptions['backColor1']);
         dicLayerArrowB.css("border-bottom-color", 'black');
     }
     else
     {
         dicLayerArrowB.css("top", (arrowYPos + 1) + 'px');
         dicLayerArrowF.css("top", (arrowYPos) + 'px');
-        dicLayerArrowF.css("border-top-color", '#' + userOptions['backColor2']);
+        dicLayerArrowF.css("border-top-color", '#' + g_userOptions['backColor2']);
         dicLayerArrowB.css("border-top-color", 'black');
     }
 
-    if (userOptions["enableTranslate"] == "true") {
+    if (g_userOptions["enableTranslate"] == "true") {
         dicLayer.show();
     }
 }
@@ -1167,41 +1133,41 @@ function InDicLayer(target)
 
 function getWordUnderMouse(x, y, target) {
 
-    if (forceShowToolTip == true)
-        return foundWord;
+    if (g_forceShowToolTip == true)
+        return g_foundWord;
 
     if (target == null)
         return null;
 
     if (InDicLayer(target))
-        return foundWord;
+        return g_foundWord;
 
     var selWord = getSelectedWord().toString();
     if (selWord.length) {        
         return selWord;
     }
 
-    if (contextSelectionWord)
+    if (g_contextSelectionWord)
     {
-        return contextSelectionWord;
+        return g_contextSelectionWord;
     }
     
-    return getWordUnderCursor(mouseEvent);
+    return getWordUnderCursor(x, y);
 }
 
 function hideWordToolTip() {
 
-    if (InDicLayer(mouseTarget))
+    if (InDicLayer(g_mouseTarget))
         return;
 
-    if (new Date().getTime() - startTootipTime < userOptions["tooltipDownDelayTime"])
+    if (new Date().getTime() - g_startTootipTime < g_userOptions["tooltipDownDelayTime"])
         return;
 
-    var word = getWordUnderMouse(mouseX, mouseY, mouseTarget);
+    var word = getWordUnderMouse(g_mouseX, g_mouseY, g_mouseTarget);
     
-    //var hidden = (word == null || word.length == 0 || (loading == false));
+    //var hidden = (word == null || word.length == 0 || (g_loading == false));
     var hidden = (word == null || word.length == 0);
-    /*if (word != null && foundWord != word)
+    /*if (word != null && g_foundWord != word)
     {        
         hidden = true;
     }*/
@@ -1215,20 +1181,20 @@ function hideWordToolTip() {
             if (window.getSelection)
                 window.getSelection().removeAllRanges();
         }
-        foundWord = null;
+        g_foundWord = null;
     }
 }
 
 function showWordToolTipCore(x, y, word, timeDelay)
 {
-    wordForDebug = word;
+    g_wordForDebug = word;
    
     if (word) {
         word = word.trim();
         
         loadWordMeaningFromWeb(word);
         
-        startTootipTime = new Date().getTime() + timeDelay;
+        g_startTootipTime = new Date().getTime() + timeDelay;
     }
     else {
         //$('#dicLayer').hide();
@@ -1236,18 +1202,20 @@ function showWordToolTipCore(x, y, word, timeDelay)
 }
 
 function showWordToolTip() {
-    var x = mouseX,
-        y = mouseY
-    target = mouseTarget;
+    var x = g_mouseX,
+        y = g_mouseY
+    target = g_mouseTarget;
     
-    if (userOptions["enableTranslate"] == "false")
+    if (g_userOptions["enableTranslate"] == "false")
         return;
 
-    if (userOptions["popupKey"] != "0" && pressKey.toString() != userOptions["popupKey"])
+    if (g_userOptions["popupKey"] != "0" && g_pressKey.toString() != g_userOptions["popupKey"])
+        return;
+
+    if (g_mousePressed > 0)
         return;
    
-    var word = getWordUnderMouse(x, y, target);
-
+    var word = getWordUnderMouse(x, y, target);    
     showWordToolTipCore(x, y, word, 0);
 }
 
@@ -1265,7 +1233,7 @@ function loadOptions() {
     chrome.storage.local.get(keys, function (options) {
         
         $.each(options, function (key, data) {
-            userOptions[key] = data;
+            g_userOptions[key] = data;
         });
         
         var dicLayer = $("#dicLayer");
@@ -1275,10 +1243,24 @@ function loadOptions() {
         dicLayer.css('font-family', options["fontType"]);
         dicLayer.css('background', '-webkit-linear-gradient(bottom, ' + '#' + options['backColor2'] + ', ' + '#' + options['backColor1'] + ')');
         
-        setInterval(function () { showWordToolTip() }, options['tooltipUpDelayTime']);
-        setInterval(function () { hideWordToolTip() }, options['tooltipDownDelayTime']);
+        setInterval(function () {
+            
+            if (g_mouseX != g_oldMouseX || g_mouseY != g_oldMouseY)
+                g_mouseHoverElapsedTime = 0;
+            else
+                g_mouseHoverElapsedTime += 100;
 
-        if (userOptions["enableDrag"] == "true") {
+            g_oldMouseX = g_mouseX;
+            g_oldMouseY = g_mouseY;
+            
+            if (g_mouseHoverElapsedTime >= g_userOptions['tooltipUpDelayTime'])
+                showWordToolTip();
+            },
+        100);
+
+        setInterval(function () { hideWordToolTip(); }, options['tooltipDownDelayTime']);
+
+        if (g_userOptions["enableDrag"] == "true") {
             //var tags = ["contextmenu", "beforecopy", "beforecut", "copy", "selectstart", "dragstart", "dragend", "keydown", "keyup", "mousedown", "mouseup"];
             var tags = ["contextmenu", "selectstart"];
 
@@ -1299,7 +1281,7 @@ $(document).ready(function () {
     createDicionaryLayer();
     createDicionaryRawData();
     
-    if (debug == true)
+    if (g_debug == true)
         createLogDiv();
 
     loadOptions();
@@ -1308,39 +1290,39 @@ $(document).ready(function () {
         //~
         if (e.which == 192) {            
             
-            if (userOptions["enableTranslate"] == "false") {
+            if (g_userOptions["enableTranslate"] == "false") {
                 $('#dicLayer').show();
-                userOptions["enableTranslate"] = "true";
+                g_userOptions["enableTranslate"] = "true";
             }
             else {
 
                 $('#dicLayer').hide();
-                userOptions["enableTranslate"] = "false";
+                g_userOptions["enableTranslate"] = "false";
             }   
             
-            chrome.storage.local.set({ "enableTranslate": userOptions["enableTranslate"] }, function () {
+            chrome.storage.local.set({ "enableTranslate": g_userOptions["enableTranslate"] }, function () {
 
             });
         }
 
-        pressKey = 0;
+        g_pressKey = 0;
     });
 
     $(document).keydown(function (e) {
-        pressKey = e.which;
-        if (userOptions["popupKey"] != "0")
+        g_pressKey = e.which;
+        if (g_userOptions["popupKey"] != "0")
             showWordToolTip();
     });
     
     $(document).mousedown(function (e) {
         if (e.which == 3) {
-                rMouseX = mouseX;
-                rMouseY = mouseY;            
+            g_rMouseX = g_mouseX;
+            g_rMouseY = g_mouseY;
             return true;
         }
 
         if (e.which == 1) {
-            contextSelectionWord = null;            
+            g_contextSelectionWord = null;            
         }
         return true;
     });
