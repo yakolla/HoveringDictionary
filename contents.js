@@ -1262,7 +1262,7 @@ function loadOptions() {
 
         if (g_userOptions["enableDrag"] == "true") {
             //var tags = ["contextmenu", "beforecopy", "beforecut", "copy", "selectstart", "dragstart", "dragend", "keydown", "keyup", "mousedown", "mouseup"];
-            var tags = ["contextmenu", "selectstart"];
+            var tags = ["contextmenu", "selectstart", "mousedown"];
 
             for (tag in tags) {
                 document.body.addEventListener(tags[tag], releaseMouse, capture);
