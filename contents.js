@@ -979,7 +979,8 @@ function presentParsedDic(language, parsedData) {
         
     }
     
-    var dicLayer = $("#dicLayer");    
+    var dicLayer = $("#dicLayer");
+
     try{
         $("#dicLayerContents").html(htmlData);
     }
@@ -991,8 +992,6 @@ function presentParsedDic(language, parsedData) {
         result = result.replace(/xmlns/gi, "dicns");
         $("#dicLayerContents").html(result);
     }
-    
-    dicLayer.scrollTop(0);
 
     if (parsedData.isSentence)
     {
@@ -1082,8 +1081,9 @@ function presentParsedDic(language, parsedData) {
         dicLayerArrowB.css("border-top-color", 'black');
     }
 
-    if (g_userOptions["enableTranslate"] == "true") {
+    if (g_userOptions["enableTranslate"] == "true") {        
         dicLayer.show();
+        dicLayer.scrollTop(0);
     }
 }
 
@@ -1092,6 +1092,19 @@ function createDicionaryLayer() {
     var myLayer = document.createElement('div');
     myLayer.id = 'dicLayer';
     document.body.appendChild(myLayer);
+
+    function scroll(e) {
+        var delta = (e.type === "mousewheel") ? e.wheelDelta : e.detail * -40;
+        if (delta < 0 && (this.scrollHeight - this.offsetHeight - this.scrollTop) <= 0) {
+            this.scrollTop = this.scrollHeight;
+            e.preventDefault();
+        } else if (delta > 0 && delta > this.scrollTop) {
+            this.scrollTop = 0;
+            e.preventDefault();
+        }
+    }
+    myLayer.addEventListener("mousewheel", scroll);
+    myLayer.addEventListener("DOMMouseScroll", scroll);
 
     var myLayerContents = document.createElement('div');
     myLayerContents.id = 'dicLayerContents';
